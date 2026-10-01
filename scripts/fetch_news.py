@@ -5,7 +5,7 @@ categorise.  Writes site/data/news.json.  Standard library only.
     python3 scripts/fetch_news.py                 # live
     python3 scripts/fetch_news.py --fixtures tests/fixtures   # offline test
 """
-import argparse, html, json, math, re, sys, time
+import argparse, html, json, math, os, re, sys, time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
@@ -17,6 +17,13 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parent.parent
 UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
+# Identities tried in turn for feeds; sites differ in what they accept, so keep the first that returns real XML.
+FEED_UAS = [
+    "Mozilla/5.0 (compatible; dailyAInews/1.0; +https://github.com/6079smith/dailyainews)",
+    UA,
+    "Feedly/1.0 (+http://www.feedly.com/fetcher.html; like FeedFetcher-Google)",
+    "Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0",
+]
 
 # ---- relevance + categories -------------------------------------------------
 AI_TERMS = [
@@ -96,9 +103,9 @@ def is_blocked(url, blocked):
     return any(h == b or h.endswith("." + b) for b in blocked)
 
 
-def http_get(url, timeout=20, max_bytes=600_000, retries=2):
+def http_get(url, timeout=20, max_bytes=600_000, retries=2, ua=None):
     """GET with a browser-like identity; retries 429/5xx with a short back-off."""
-    req = Request(url, headers={"User-Agent": UA, "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml, text/html;q=0.8, */*;q=0.5", "Accept-Language": "en-US,en;q=0.9"})
+    req = Request(url, headers={"User-Agent": ua or UA, "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml, text/html;q=0.8, */*;q=0.5", "Accept-Language": "en-US,en;q=0.9"})
     for attempt in range(retries + 1):
         try:
             with urlopen(req, timeout=timeout) as r:
@@ -112,6 +119,26 @@ def http_get(url, timeout=20, max_bytes=600_000, retries=2):
                 time.sleep(wait)
                 continue
             raise
+
+
+def looks_like_feed(raw):
+    head = raw.lstrip(b"\xef\xbb\xbf \r\n\t")[:600].lower()
+    return head.startswith(b"<?xml") or b"<rss" in head or b"<feed" in head or b"<rdf" in head
+
+
+def fetch_feed(url, max_bytes=6_000_000):
+    """Try each identity in FEED_UAS; return the first response that is really a feed."""
+    last = None
+    for ua in FEED_UAS:
+        try:
+            _, raw, _ = http_get(url, max_bytes=max_bytes, ua=ua)
+        except Exception as e:
+            last = e
+            continue
+        if looks_like_feed(raw):
+            return raw
+        last = ValueError("response was not a feed (HTML page?)")
+    raise last or ValueError("no response")
 
 
 def decode(b, cs):
@@ -252,7 +279,7 @@ def build(args):
                     return src["id"], [], "no fixture"
                 raw = p.read_bytes()
             else:
-                _, raw, _ = http_get(src["feed"], max_bytes=6_000_000)
+                raw = fetch_feed(src["feed"])
             return src["id"], parse_feed(raw), None
         except Exception as e:
             return src["id"], [], f"{type(e).__name__}: {e}"
@@ -334,9 +361,10 @@ def build(args):
 
     data = {
         "generated": now.isoformat(),
+        "repo": os.environ.get("GITHUB_REPOSITORY", "6079smith/dailyAInews"),
         "window_hours": args.hours,
         "sources": [{"id": s["id"], "name": s["name"], "type": s["type"],
-                     "default": s["id"] in cfg["default_sources"],
+                     "default": s["id"] in cfg["default_sources"], "custom": bool(s.get("custom")), "site": s.get("site", ""),
                      "items": status[s["id"]]["items"], "ok": status[s["id"]]["ok"]} for s in cfg["sources"]],
         "categories": [n for n, _ in CATEGORIES] + [DEFAULT_CAT],
         "stats": {"fetched": len(candidates), "paywalled_dropped": dropped, "stories": len(out)},

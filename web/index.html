@@ -32,12 +32,15 @@
       <button class="btn ghost" data-close aria-label="Close">✕</button>
     </div>
     <p class="hint">Saved on this device and used as your default every visit.</p>
+    <input id="srcSearch" class="search" type="search" placeholder="Search or add a source (name or website)" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" aria-label="Search sources">
     <div class="row-btns">
       <button class="btn small" id="selAll">All</button>
       <button class="btn small" id="selNone">None</button>
       <button class="btn small" id="selDefault">Reset</button>
     </div>
     <div id="srcList" class="srclist"></div>
+    <a id="addNew" class="btn wide addnew" target="_blank" rel="noopener noreferrer" hidden></a>
+    <p id="addHelp" class="hint" hidden>Opens a GitHub request. An automatic job finds the feed, checks it is free to read, and adds it (or lists matches for you to pick). Takes a minute or two.</p>
     <button class="btn primary wide" id="saveSrc">Save as my default</button>
   </section>
 </div>

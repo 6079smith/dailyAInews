@@ -1,0 +1,49 @@
+name: Add source
+# Triggered by a GitHub issue titled "Add source: <name or web address>" created by the repo owner
+# (the dashboard's "Add as a new source" button opens one pre-filled).  Replying "/add 2" picks a candidate.
+on:
+  issues:
+    types: [opened]
+  issue_comment:
+    types: [created]
+permissions:
+  contents: write
+  issues: write
+  actions: write
+concurrency:
+  group: add-source
+  cancel-in-progress: false
+jobs:
+  add:
+    if: >-
+      github.event.issue.user.login == github.repository_owner &&
+      startsWith(github.event.issue.title, 'Add source:') &&
+      (
+        (github.event_name == 'issues') ||
+        (github.event_name == 'issue_comment' && github.event.comment.user.login == github.repository_owner && startsWith(github.event.comment.body, '/add'))
+      )
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Find / add the source
+        id: run
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          MODE: ${{ github.event_name == 'issues' && 'find' || 'choose' }}
+        run: python3 scripts/add_source.py "$MODE"
+      - name: Commit and rebuild the dashboard
+        if: steps.run.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add sources.json
+          git commit -m "Add custom source (requested in issue #${{ github.event.issue.number }})"
+          git push origin HEAD:main
+          gh workflow run update.yml --ref main

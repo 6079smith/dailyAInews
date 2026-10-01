@@ -19,7 +19,17 @@
     {"id": "hn",          "name": "Hacker News (AI)",     "feed": "https://hnrss.org/newest?q=AI+OR+LLM+OR+AGI+OR+OpenAI+OR+Anthropic&points=150", "ai_only": true, "weight": 0.8, "type": "Community"},
     {"id": "importai",    "name": "Import AI",            "feed": "https://importai.substack.com/feed",                                "ai_only": true,  "weight": 1.0, "type": "Newsletter"},
     {"id": "simonw",      "name": "Simon Willison",       "feed": "https://simonwillison.net/atom/everything/",                        "ai_only": false, "weight": 0.9, "type": "Newsletter"},
-    {"id": "lastweek",    "name": "Last Week in AI",      "feed": "https://lastweekin.ai/feed",                                        "ai_only": true,  "weight": 0.9, "type": "Newsletter"}
+    {"id": "lastweek",    "name": "Last Week in AI",      "feed": "https://lastweekin.ai/feed",                                        "ai_only": true,  "weight": 0.9, "type": "Newsletter"},
+    {"id": "tomshardware", "name": "Tom's Hardware", "feed": "https://www.tomshardware.com/feeds/all", "ai_only": false, "weight": 0.9, "type": "News", "site": "https://www.tomshardware.com"},
+    {"id": "engadget", "name": "Engadget", "feed": "https://www.engadget.com/rss.xml", "ai_only": false, "weight": 0.9, "type": "News", "site": "https://www.engadget.com"},
+    {"id": "zdnet", "name": "ZDNET (AI)", "feed": "https://www.zdnet.com/topic/artificial-intelligence/rss.xml", "ai_only": true, "weight": 0.9, "type": "News", "site": "https://www.zdnet.com"},
+    {"id": "theregister", "name": "The Register (AI)", "feed": "https://www.theregister.com/software/ai_ml/headlines.atom", "ai_only": true, "weight": 1.0, "type": "News", "site": "https://www.theregister.com"},
+    {"id": "techradar", "name": "TechRadar", "feed": "https://www.techradar.com/feeds/articletype/news", "ai_only": false, "weight": 0.8, "type": "News", "site": "https://www.techradar.com"},
+    {"id": "futurism", "name": "Futurism", "feed": "https://futurism.com/feed", "ai_only": false, "weight": 0.8, "type": "News", "site": "https://futurism.com"},
+    {"id": "sciencedaily", "name": "ScienceDaily (AI)", "feed": "https://www.sciencedaily.com/rss/computers_math/artificial_intelligence.xml", "ai_only": true, "weight": 0.9, "type": "Research", "site": "https://www.sciencedaily.com"},
+    {"id": "googleresearch", "name": "Google Research", "feed": "https://research.google/blog/rss/", "ai_only": true, "weight": 1.0, "type": "Research", "site": "https://research.google"},
+    {"id": "bair", "name": "Berkeley AI Research", "feed": "https://bair.berkeley.edu/blog/feed.xml", "ai_only": true, "weight": 1.0, "type": "Research", "site": "https://bair.berkeley.edu"},
+    {"id": "awsml", "name": "AWS Machine Learning", "feed": "https://aws.amazon.com/blogs/machine-learning/feed/", "ai_only": true, "weight": 0.8, "type": "Lab", "site": "https://aws.amazon.com/blogs/machine-learning"}
   ],
   "blocked_domains": [
     "ft.com", "wsj.com", "bloomberg.com", "theinformation.com", "nytimes.com", "economist.com",
