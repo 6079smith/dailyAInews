@@ -11,11 +11,12 @@ from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 from urllib.parse import urlparse
+from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parent.parent
-UA = "Mozilla/5.0 (compatible; dailyAInews/1.0; +https://github.com/6079smith/dailyainews)"
+UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
 
 # ---- relevance + categories -------------------------------------------------
 AI_TERMS = [
@@ -95,10 +96,22 @@ def is_blocked(url, blocked):
     return any(h == b or h.endswith("." + b) for b in blocked)
 
 
-def http_get(url, timeout=20, max_bytes=600_000):
-    req = Request(url, headers={"User-Agent": UA, "Accept": "*/*"})
-    with urlopen(req, timeout=timeout) as r:
-        return r.status, r.read(max_bytes), r.headers.get_content_charset() or "utf-8"
+def http_get(url, timeout=20, max_bytes=600_000, retries=2):
+    """GET with a browser-like identity; retries 429/5xx with a short back-off."""
+    req = Request(url, headers={"User-Agent": UA, "Accept": "application/rss+xml, application/atom+xml, application/xml, text/xml, text/html;q=0.8, */*;q=0.5", "Accept-Language": "en-US,en;q=0.9"})
+    for attempt in range(retries + 1):
+        try:
+            with urlopen(req, timeout=timeout) as r:
+                return r.status, r.read(max_bytes), r.headers.get_content_charset() or "utf-8"
+        except HTTPError as e:
+            if e.code in (429, 500, 502, 503, 504) and attempt < retries:
+                try:
+                    wait = min(float(e.headers.get("Retry-After", "")), 10)
+                except ValueError:
+                    wait = 2 * (attempt + 1)
+                time.sleep(wait)
+                continue
+            raise
 
 
 def decode(b, cs):
@@ -114,7 +127,17 @@ def local(tag):
 
 def parse_feed(xml_bytes):
     """Return list of dicts: title, url, summary, published (RSS 2.0 and Atom)."""
-    root = ET.fromstring(xml_bytes)
+    try:
+        root = ET.fromstring(xml_bytes)
+    except ET.ParseError:
+        # cut-off or slightly malformed feed: keep every complete item/entry
+        end = max(xml_bytes.rfind(b"</item>"), xml_bytes.rfind(b"</entry>"))
+        if end < 0:
+            raise
+        atom = xml_bytes.rfind(b"</entry>") > xml_bytes.rfind(b"</item>")
+        tail = b"</entry></feed>" if atom else b"</item></channel></rss>"
+        cut = xml_bytes[: end + (8 if atom else 7)]
+        root = ET.fromstring(cut + (b"</feed>" if atom else b"</channel></rss>"))
     items = []
     for el in root.iter():
         if local(el.tag) not in ("item", "entry"):
@@ -229,7 +252,7 @@ def build(args):
                     return src["id"], [], "no fixture"
                 raw = p.read_bytes()
             else:
-                _, raw, _ = http_get(src["feed"])
+                _, raw, _ = http_get(src["feed"], max_bytes=6_000_000)
             return src["id"], parse_feed(raw), None
         except Exception as e:
             return src["id"], [], f"{type(e).__name__}: {e}"
