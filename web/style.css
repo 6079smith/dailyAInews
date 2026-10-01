@@ -40,3 +40,9 @@ main{padding:12px 12px 4px;max-width:960px;margin:0 auto;display:grid;grid-templ
 .src span{flex:1}.src em{font-style:normal;color:var(--mut);font-size:12.5px}
 .src.off{opacity:.55}
 @media (min-width:900px){main{grid-template-columns:repeat(3,minmax(0,1fr))}.card h3{font-size:16px}.card p{font-size:14px}}
+.actions{display:flex;gap:8px;align-items:center}
+.btn.icon{width:40px;padding:0;font-size:20px;line-height:1}
+.spin{display:inline-block}
+.loading .spin{animation:rot .8s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.loading .spin{animation:none;opacity:.5}}

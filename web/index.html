@@ -11,7 +11,10 @@
 <header class="top">
   <div class="bar">
     <h1>Daily AI News</h1>
-    <button id="openPicker" class="btn" aria-label="Choose sources">Sources <span id="srcCount" class="pill"></span></button>
+    <div class="actions">
+      <button id="refresh" class="btn icon" aria-label="Refresh news" title="Refresh"><span class="spin">↻</span></button>
+      <button id="openPicker" class="btn" aria-label="Choose sources">Sources <span id="srcCount" class="pill"></span></button>
+    </div>
   </div>
   <div class="sub"><span id="updated">Loading…</span> · <span class="free">Free to read only</span></div>
   <nav id="cats" class="chips" aria-label="Categories"></nav>
