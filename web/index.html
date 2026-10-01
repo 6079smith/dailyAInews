@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Daily AI News</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="bar">
+    <h1>Daily AI News</h1>
+    <button id="openPicker" class="btn" aria-label="Choose sources">Sources <span id="srcCount" class="pill"></span></button>
+  </div>
+  <div class="sub"><span id="updated">Loading…</span> · <span class="free">Free to read only</span></div>
+  <nav id="cats" class="chips" aria-label="Categories"></nav>
+</header>
+
+<main id="feed" aria-live="polite"></main>
+<p id="empty" class="empty" hidden>No stories for these sources and category. Try adding more sources.</p>
+<footer class="foot" id="foot"></footer>
+
+<div id="sheet" class="sheet" hidden>
+  <div class="sheet-bg" data-close></div>
+  <section class="sheet-body" role="dialog" aria-modal="true" aria-label="Source picker">
+    <div class="sheet-head">
+      <h2>Your sources</h2>
+      <button class="btn ghost" data-close aria-label="Close">✕</button>
+    </div>
+    <p class="hint">Saved on this device and used as your default every visit.</p>
+    <div class="row-btns">
+      <button class="btn small" id="selAll">All</button>
+      <button class="btn small" id="selNone">None</button>
+      <button class="btn small" id="selDefault">Reset</button>
+    </div>
+    <div id="srcList" class="srclist"></div>
+    <button class="btn primary wide" id="saveSrc">Save as my default</button>
+  </section>
+</div>
+<script src="app.js"></script>
+</body>
+</html>

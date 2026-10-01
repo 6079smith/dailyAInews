@@ -1,0 +1,32 @@
+{
+  "_note": "Only sources that are free to read (no hard paywall, no metered paywall). ai_only=false means the feed is general and gets keyword-filtered. weight boosts primary/official sources.",
+  "sources": [
+    {"id": "openai",      "name": "OpenAI",               "feed": "https://openai.com/news/rss.xml",                                   "ai_only": true,  "weight": 1.3, "type": "Lab"},
+    {"id": "deepmind",    "name": "Google DeepMind",      "feed": "https://deepmind.google/blog/rss.xml",                              "ai_only": true,  "weight": 1.3, "type": "Lab"},
+    {"id": "googleai",    "name": "Google AI Blog",       "feed": "https://blog.google/technology/ai/rss/",                            "ai_only": true,  "weight": 1.1, "type": "Lab"},
+    {"id": "microsoft",   "name": "Microsoft AI",         "feed": "https://blogs.microsoft.com/ai/feed/",                              "ai_only": true,  "weight": 1.0, "type": "Lab"},
+    {"id": "nvidia",      "name": "NVIDIA Blog",          "feed": "https://blogs.nvidia.com/feed/",                                    "ai_only": false, "weight": 1.0, "type": "Lab"},
+    {"id": "huggingface", "name": "Hugging Face",         "feed": "https://huggingface.co/blog/feed.xml",                              "ai_only": true,  "weight": 1.0, "type": "Lab"},
+    {"id": "mitnews",     "name": "MIT News (AI)",        "feed": "https://news.mit.edu/topic/mitartificial-intelligence2-rss.xml",    "ai_only": true,  "weight": 1.0, "type": "Research"},
+    {"id": "techcrunch",  "name": "TechCrunch",           "feed": "https://techcrunch.com/category/artificial-intelligence/feed/",     "ai_only": true,  "weight": 1.1, "type": "News"},
+    {"id": "verge",       "name": "The Verge",            "feed": "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml", "ai_only": true,  "weight": 1.1, "type": "News"},
+    {"id": "ars",         "name": "Ars Technica",         "feed": "https://arstechnica.com/ai/feed/",                                  "ai_only": true,  "weight": 1.1, "type": "News"},
+    {"id": "venturebeat", "name": "VentureBeat",          "feed": "https://venturebeat.com/category/ai/feed/",                         "ai_only": true,  "weight": 1.0, "type": "News"},
+    {"id": "decoder",     "name": "The Decoder",          "feed": "https://the-decoder.com/feed/",                                     "ai_only": true,  "weight": 1.0, "type": "News"},
+    {"id": "ainews",      "name": "AI News",              "feed": "https://www.artificialintelligence-news.com/feed/",                 "ai_only": true,  "weight": 0.9, "type": "News"},
+    {"id": "marktechpost","name": "MarkTechPost",         "feed": "https://www.marktechpost.com/feed/",                                "ai_only": true,  "weight": 0.9, "type": "News"},
+    {"id": "guardian",    "name": "The Guardian (AI)",    "feed": "https://www.theguardian.com/technology/artificialintelligenceai/rss","ai_only": true, "weight": 1.1, "type": "News"},
+    {"id": "bbc",         "name": "BBC Technology",       "feed": "https://feeds.bbci.co.uk/news/technology/rss.xml",                  "ai_only": false, "weight": 1.0, "type": "News"},
+    {"id": "hn",          "name": "Hacker News (AI)",     "feed": "https://hnrss.org/newest?q=AI+OR+LLM+OR+AGI+OR+OpenAI+OR+Anthropic&points=150", "ai_only": true, "weight": 0.8, "type": "Community"},
+    {"id": "importai",    "name": "Import AI",            "feed": "https://importai.substack.com/feed",                                "ai_only": true,  "weight": 1.0, "type": "Newsletter"},
+    {"id": "simonw",      "name": "Simon Willison",       "feed": "https://simonwillison.net/atom/everything/",                        "ai_only": false, "weight": 0.9, "type": "Newsletter"},
+    {"id": "lastweek",    "name": "Last Week in AI",      "feed": "https://lastweekin.ai/feed",                                        "ai_only": true,  "weight": 0.9, "type": "Newsletter"}
+  ],
+  "blocked_domains": [
+    "ft.com", "wsj.com", "bloomberg.com", "theinformation.com", "nytimes.com", "economist.com",
+    "washingtonpost.com", "businessinsider.com", "wired.com", "technologyreview.com", "hbr.org",
+    "reuters.com", "semafor.com", "fortune.com", "forbes.com", "axios.com", "newyorker.com",
+    "theatlantic.com", "statnews.com", "protocol.com"
+  ],
+  "default_sources": ["openai", "deepmind", "googleai", "techcrunch", "verge", "ars", "venturebeat", "decoder", "guardian", "bbc", "hn", "importai"]
+}

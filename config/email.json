@@ -1,0 +1,7 @@
+{
+  "subject": "Daily AI News",
+  "sources": "default",
+  "max_stories": 12,
+  "max_per_category": 3,
+  "site_url": ""
+}
