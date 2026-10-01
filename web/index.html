@@ -17,7 +17,12 @@
     </div>
   </div>
   <div class="sub"><span id="updated">Loading…</span> · <span class="free">Free to read only</span></div>
-  <nav id="cats" class="chips" aria-label="Categories"></nav>
+  <div class="drops">
+    <button id="dropCat" class="drop" aria-expanded="false" aria-controls="panelCat"><span class="dl">Category</span><b id="catLabel">All</b><i aria-hidden="true">▾</i></button>
+    <button id="dropSrc" class="drop" aria-expanded="false" aria-controls="panelSrc"><span class="dl">Source</span><b id="srcLabel">All</b><i aria-hidden="true">▾</i></button>
+  </div>
+  <div id="panelCat" class="panel" hidden></div>
+  <div id="panelSrc" class="panel" hidden></div>
 </header>
 
 <main id="feed" aria-live="polite"></main>

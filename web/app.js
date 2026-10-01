@@ -2,7 +2,7 @@
   const KEY = "dailyAInews.sources.v1";
   const $ = (s) => document.querySelector(s);
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  let data, sel = new Set(), cat = "All", q = "";
+  let data, sel = new Set(), cat = "All", q = "", srcF = null;
 
   const load = () => { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } };
   const SEEN = "dailyAInews.seen.v1";
@@ -63,10 +63,10 @@
   });
 
   // Pick best article among selected sources; others (one per source) become "Also covered by".
-  function view() {
+  function view(only) {
     const out = [];
     for (const s of data.stories) {
-      const arts = s.articles.filter((a) => sel.has(a.source)).sort((a, b) => b.score - a.score);
+      const arts = s.articles.filter((a) => sel.has(a.source) && (!only || a.source === only)).sort((a, b) => b.score - a.score);
       if (!arts.length) continue;
       out.push({ cat: s.category, rank: arts[0].score + 0.6 * (arts.length - 1), lead: arts[0], also: arts.slice(1) });
     }
@@ -76,13 +76,31 @@
   const name = (id) => (data.sources.find((s) => s.id === id) || {}).name || id;
 
   function render() {
-    const all = view();
+    if (srcF && !sel.has(srcF)) srcF = null;
+    const all = view(srcF);
     const counts = {};
     all.forEach((s) => (counts[s.cat] = (counts[s.cat] || 0) + 1));
-    const cats = ["All", ...data.categories.filter((c) => counts[c])];
-    if (!cats.includes(cat)) cat = "All";
-    $("#cats").innerHTML = cats.map((c) => `<button class="chip" aria-pressed="${c === cat}" data-cat="${esc(c)}">${esc(c)}<small>${c === "All" ? all.length : counts[c]}</small></button>`).join("");
+    if (cat !== "All" && !counts[cat]) cat = "All";
     $("#srcCount").textContent = sel.size;
+    $("#catLabel").textContent = cat;
+    $("#srcLabel").textContent = srcF ? name(srcF) : "All (" + sel.size + ")";
+
+    // Category dropdown: counts reflect the current source filter
+    $("#panelCat").innerHTML = [["All", all.length], ...data.categories.filter((c) => counts[c]).map((c) => [c, counts[c]])].map(([c, n]) =>
+      `<button class="row" role="option" aria-selected="${c === cat}" data-pick-cat="${esc(c)}"><span class="ck">${c === cat ? "✓" : ""}</span><span class="t">${esc(c)}</span><span class="n">${n}</span></button>`).join("");
+
+    // Source dropdown: counts reflect the current category
+    const sc = {};
+    for (const st of data.stories) {
+      if (cat !== "All" && st.category !== cat) continue;
+      for (const a of st.articles) if (sel.has(a.source)) sc[a.source] = (sc[a.source] || 0) + 1;
+    }
+    const total = Object.values(sc).length ? view(null).filter((s) => cat === "All" || s.cat === cat).length : 0;
+    const mine = data.sources.filter((x) => sel.has(x.id)).sort((x, y) => (sc[y.id] || 0) - (sc[x.id] || 0) || x.name.localeCompare(y.name));
+    $("#panelSrc").innerHTML =
+      `<button class="row" role="option" aria-selected="${!srcF}" data-pick-src=""><span class="ck">${!srcF ? "✓" : ""}</span><span class="t">All my sources</span><span class="n">${total}</span></button>` +
+      mine.map((x) => `<button class="row ${sc[x.id] ? "" : "dim"}" role="option" aria-selected="${srcF === x.id}" data-pick-src="${esc(x.id)}"><span class="ck">${srcF === x.id ? "✓" : ""}</span><span class="t">${esc(x.name)}</span><span class="n">${sc[x.id] || 0}</span></button>`).join("") +
+      `<button class="row manage" id="manage">Add or remove sources…</button>`;
 
     const shown = cat === "All" ? all : all.filter((s) => s.cat === cat);
     const card = (s) => `<article class="card">
@@ -126,12 +144,27 @@
   }
   const setAll = (ids) => { sel = new Set(ids); renderPicker(); render(); save(); };
 
+  // dropdown panels: one open at a time; click outside or Esc closes
+  function closePanels() {
+    ["Cat", "Src"].forEach((k) => { $("#panel" + k).hidden = true; $("#drop" + k).setAttribute("aria-expanded", "false"); });
+  }
+  function togglePanel(k) {
+    const open = $("#panel" + k).hidden;
+    closePanels();
+    if (open) { $("#panel" + k).hidden = false; $("#drop" + k).setAttribute("aria-expanded", "true"); }
+  }
+  document.addEventListener("click", (e) => { if (!e.target.closest(".drops,.panel")) closePanels(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closePanels(); });
+
   document.addEventListener("click", (e) => {
-    const t = e.target.closest("[data-cat],[data-close],#refresh,#openPicker,#selAll,#selNone,#selDefault,#saveSrc");
+    const t = e.target.closest("[data-pick-cat],[data-pick-src],#dropCat,#dropSrc,#manage,[data-close],#refresh,#openPicker,#selAll,#selNone,#selDefault,#saveSrc");
     if (!t) return;
     if (t.id === "refresh") { loadData(true); return; }
     if (!data) return;
-    if (t.dataset.cat) { cat = t.dataset.cat; render(); scrollTo({ top: 0 }); }
+    if ("pickCat" in t.dataset) { cat = t.dataset.pickCat; closePanels(); render(); scrollTo({ top: 0 }); }
+    else if ("pickSrc" in t.dataset) { srcF = t.dataset.pickSrc || null; closePanels(); render(); scrollTo({ top: 0 }); }
+    else if (t.id === "dropCat" || t.id === "dropSrc") togglePanel(t.id === "dropCat" ? "Cat" : "Src");
+    else if (t.id === "manage") { closePanels(); q = ""; $("#srcSearch").value = ""; renderPicker(); $("#sheet").hidden = false; }
     else if (t.id === "openPicker") { q = ""; $("#srcSearch").value = ""; renderPicker(); $("#sheet").hidden = false; }
     else if ("close" in t.dataset || t.id === "saveSrc") { if (t.id === "saveSrc") save(); $("#sheet").hidden = true; }
     else if (t.id === "selAll") setAll(data.sources.map((s) => s.id));

@@ -12,12 +12,10 @@
     {"id": "ars",         "name": "Ars Technica",         "feed": "https://arstechnica.com/ai/feed/",                                  "ai_only": true,  "weight": 1.1, "type": "News"},
     {"id": "venturebeat", "name": "VentureBeat",          "feed": "https://venturebeat.com/category/ai/feed/",                         "ai_only": true,  "weight": 1.0, "type": "News"},
     {"id": "decoder",     "name": "The Decoder",          "feed": "https://the-decoder.com/feed/",                                     "ai_only": true,  "weight": 1.0, "type": "News"},
-    {"id": "ainews",      "name": "AI News",              "feed": "https://www.artificialintelligence-news.com/feed/",                 "ai_only": true,  "weight": 0.9, "type": "News"},
     {"id": "marktechpost","name": "MarkTechPost",         "feed": "https://www.marktechpost.com/feed/",                                "ai_only": true,  "weight": 0.9, "type": "News"},
     {"id": "guardian",    "name": "The Guardian (AI)",    "feed": "https://www.theguardian.com/technology/artificialintelligenceai/rss","ai_only": true, "weight": 1.1, "type": "News"},
     {"id": "bbc",         "name": "BBC Technology",       "feed": "https://feeds.bbci.co.uk/news/technology/rss.xml",                  "ai_only": false, "weight": 1.0, "type": "News"},
     {"id": "hn",          "name": "Hacker News (AI)",     "feed": "https://hnrss.org/newest?q=AI+OR+LLM+OR+AGI+OR+OpenAI+OR+Anthropic&points=150", "ai_only": true, "weight": 0.8, "type": "Community"},
-    {"id": "importai",    "name": "Import AI",            "feed": "https://importai.substack.com/feed",                                "ai_only": true,  "weight": 1.0, "type": "Newsletter"},
     {"id": "simonw",      "name": "Simon Willison",       "feed": "https://simonwillison.net/atom/everything/",                        "ai_only": false, "weight": 0.9, "type": "Newsletter"},
     {"id": "lastweek",    "name": "Last Week in AI",      "feed": "https://lastweekin.ai/feed",                                        "ai_only": true,  "weight": 0.9, "type": "Newsletter"},
     {"id": "tomshardware", "name": "Tom's Hardware", "feed": "https://www.tomshardware.com/feeds/all", "ai_only": false, "weight": 0.9, "type": "News", "site": "https://www.tomshardware.com"},
@@ -37,5 +35,5 @@
     "reuters.com", "semafor.com", "fortune.com", "forbes.com", "axios.com", "newyorker.com",
     "theatlantic.com", "statnews.com", "protocol.com"
   ],
-  "default_sources": ["openai", "deepmind", "googleai", "techcrunch", "verge", "ars", "venturebeat", "decoder", "guardian", "bbc", "hn", "importai"]
+  "default_sources": ["openai", "deepmind", "googleai", "techcrunch", "verge", "ars", "venturebeat", "decoder", "guardian", "bbc", "hn"]
 }
