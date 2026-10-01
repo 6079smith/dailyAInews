@@ -14,15 +14,46 @@
     return h < 24 ? h + "h ago" : Math.round(h / 24) + "d ago";
   };
 
-  fetch("data/news.json", { cache: "no-cache" }).then((r) => r.json()).then((d) => {
-    data = d;
-    const saved = load();
-    const valid = new Set(d.sources.map((s) => s.id));
-    sel = new Set((saved || d.sources.filter((s) => s.default).map((s) => s.id)).filter((id) => valid.has(id)));
-    if (!sel.size) sel = new Set(d.sources.filter((s) => s.default).map((s) => s.id));
-    $("#updated").textContent = "Updated " + ago(d.generated);
-    render();
-  }).catch(() => { $("#updated").textContent = "Couldn't load news"; });
+  let busy = false;
+  function setUpdated(extra) {
+    $("#updated").textContent = "Updated " + ago(data.generated) + (extra ? " · " + extra : "");
+  }
+
+  // manual=true: user pressed refresh (keep their selection, report the outcome)
+  function loadData(manual) {
+    if (busy) return Promise.resolve();
+    busy = true;
+    document.body.classList.add("loading");
+    return fetch("data/news.json?t=" + Date.now(), { cache: "no-store" }).then((r) => {
+      if (!r.ok) throw new Error(r.status);
+      return r.json();
+    }).then((d) => {
+      const prev = data && data.generated;
+      const prevCount = data ? data.stats.stories : 0;
+      data = d;
+      const valid = new Set(d.sources.map((s) => s.id));
+      if (!sel.size) {
+        const saved = load();
+        sel = new Set((saved || d.sources.filter((s) => s.default).map((s) => s.id)).filter((id) => valid.has(id)));
+        if (!sel.size) sel = new Set(d.sources.filter((s) => s.default).map((s) => s.id));
+      } else sel = new Set([...sel].filter((id) => valid.has(id)));
+      render();
+      if (!manual) setUpdated();
+      else if (prev === d.generated) setUpdated("already the latest");
+      else setUpdated(Math.max(0, d.stats.stories - prevCount) + " new");
+    }).catch(() => {
+      if (!data) $("#updated").textContent = "Couldn't load news";
+      else setUpdated("refresh failed, check connection");
+    }).finally(() => { busy = false; document.body.classList.remove("loading"); });
+  }
+  loadData(false);
+
+  // Re-check when you come back to the tab/app after a while
+  let hiddenAt = 0;
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) hiddenAt = Date.now();
+    else if (data && hiddenAt && Date.now() - hiddenAt > 20 * 60 * 1000) loadData(true);
+  });
 
   // Pick best article among selected sources; others (one per source) become "Also covered by".
   function view() {
@@ -76,8 +107,10 @@
   const setAll = (ids) => { sel = new Set(ids); renderPicker(); render(); save(); };
 
   document.addEventListener("click", (e) => {
-    const t = e.target.closest("[data-cat],[data-close],#openPicker,#selAll,#selNone,#selDefault,#saveSrc");
-    if (!t || !data) return;
+    const t = e.target.closest("[data-cat],[data-close],#refresh,#openPicker,#selAll,#selNone,#selDefault,#saveSrc");
+    if (!t) return;
+    if (t.id === "refresh") { loadData(true); return; }
+    if (!data) return;
     if (t.dataset.cat) { cat = t.dataset.cat; render(); scrollTo({ top: 0 }); }
     else if (t.id === "openPicker") { renderPicker(); $("#sheet").hidden = false; }
     else if ("close" in t.dataset || t.id === "saveSrc") { if (t.id === "saveSrc") save(); $("#sheet").hidden = true; }
