@@ -16,7 +16,7 @@
       <button id="openPicker" class="btn" aria-label="Choose sources">Sources <span id="srcCount" class="pill"></span></button>
     </div>
   </div>
-  <div class="sub"><span id="updated">Loading…</span> · <span class="free">Free to read only</span></div>
+  <div class="sub"><span class="dot" aria-hidden="true"></span><span id="updated">Loading…</span><span>·</span><span class="free">Free to read only</span></div>
   <div class="drops">
     <button id="dropCat" class="drop" aria-expanded="false" aria-controls="panelCat"><span class="dl">Category</span><b id="catLabel">All</b><i aria-hidden="true">▾</i></button>
     <button id="dropSrc" class="drop" aria-expanded="false" aria-controls="panelSrc"><span class="dl">Source</span><b id="srcLabel">All</b><i aria-hidden="true">▾</i></button>
@@ -25,7 +25,7 @@
   <div id="panelSrc" class="panel" hidden></div>
 </header>
 
-<main id="feed" aria-live="polite"></main>
+<main id="feed" aria-live="polite"><div class="card sk"></div><div class="card sk"></div><div class="card sk"></div><div class="card sk"></div><div class="card sk"></div><div class="card sk"></div></main>
 <p id="empty" class="empty" hidden>No stories for these sources and category. Try adding more sources.</p>
 <footer class="foot" id="foot"></footer>
 
