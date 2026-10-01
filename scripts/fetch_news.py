@@ -35,18 +35,52 @@ AI_TERMS = [
 ]
 AI_RE = re.compile("|".join(AI_TERMS), re.I)
 
-CATEGORIES = [  # (name, regex) -- first strongest match wins
-    ("AGI & Superintelligence", r"\bagi\b|\basi\b|superintelligen|artificial general|frontier lab|existential|singularity|recursive self"),
-    ("Safety & Policy", r"safety|regulat|\blaw\b|legislat|congress|senate|\beu\b|act\b|lawsuit|sue[sd]?\b|copyright|court|ban\b|ethic|alignment|policy|government|privacy|deepfake|misinformation|security|jailbreak"),
-    ("Chips & Infrastructure", r"nvidia|\bgpu|chip|data ?cent|datacent|compute|semiconductor|tsmc|\bamd\b|tpu|megawatt|gigawatt|power grid|cluster|inference cost"),
-    ("Business & Funding", r"funding|raises?\b|valuation|invest|acquir|acquisition|ipo\b|revenue|billion|million|startup|layoff|earnings|partnership|deal\b|market"),
-    ("Models & Releases", r"launch|releas|introduc|unveil|new model|gpt-?\d|claude|gemini|llama|mistral|grok|deepseek|benchmark|open[- ]source|open[- ]weight|version \d|\bv\d\b|announce"),
-    ("Research", r"research|paper|study|scientist|discover|arxiv|breakthrough|researchers|university|dataset|reasoning|training|fine-?tun"),
-    ("Products & Tools", r"app\b|feature|tool|plugin|assistant|copilot|browser|integrat|api\b|developer|agent|coding|workflow|rolls? out"),
-    ("Society & Work", r"jobs?|workers?|employ|education|school|student|health|medical|artist|creative|culture|creator|workforce|society|teen|children"),
+# Category rules: (whole-word regex, weight).  A pattern scores weight x 2 if it appears in a headline and
+# weight x 1 if it appears only in the snippet; the highest-scoring category wins (ties: earlier in the list).
+# Below MIN_SCORE the story goes to "Other".  Whole words only: "investigation" must not look like "invest".
+CATEGORIES = [
+    ("AGI & Superintelligence", [
+        (r"\bagi\b|\basi\b|superintelligen\w*|artificial general intelligence", 4),
+        (r"singularity|recursive self[- ]improv\w*|intelligence explosion|p\(doom\)", 3),
+        (r"existential (risk|threat)s?|human[- ]level|race to (agi|superintelligence)", 3),
+        (r"frontier (labs?|models?)", 1)]),
+    ("Safety & Policy", [
+        (r"\bregulat\w*|\blegislat\w*|\blawmakers?\b|\bsanctions?\b|\bexport controls?\b|\btariffs?\b", 3),
+        (r"\bsue[sd]?\b|\blawsuits?\b|\bcourt\b|\bjudge\b|\bruling\b|\bcopyright\w*|\binvestigat\w*", 3),
+        (r"\bsafety\b|\bsafeguards?\b|\bethic\w*|\balignment\b|\bpolic(y|ies)\b|\bgovernment\w*", 2),
+        (r"\bcongress\b|\bsenate\b|\bparliament\b|\bwhite house\b|\bpentagon\b|\bfederal\b|\bftc\b|\bdoj\b|\bsec\b|\bEU\b", 2),
+        (r"\bbans?\b|\bbanned\b|\bbanning\b|\bprivacy\b|\bsurveillance\b|\bdeepfakes?\b|\bmisinformation\b|\bdisinformation\b", 2),
+        (r"\bsecurity\b|\bjailbreak\w*|\bvulnerabilit\w*|\bhack\w*|\bbreach\w*|\bcyber\w*|\belections?\b|\bcompliance\b", 2)]),
+    ("Chips & Infrastructure", [
+        (r"\bgpus?\b|\bchips?\b|\bsemiconductors?\b|\btpus?\b|\bdata ?cent(er|re)s?\b|\bsupercomputer\w*", 3),
+        (r"\bnvidia\b|\btsmc\b|\bamd\b|\bintel\b|\bbroadcom\b|\bcerebras\b|\bgroq\b|\bcompute\b|\bcluster\b|\bhardware\b", 2),
+        (r"\b(mega|giga)watts?\b|\bpower grid\b|\belectricity\b|\bnuclear\b|\benergy\b|\bcapex\b|\binference\b", 2)]),
+    ("Business & Funding", [
+        (r"\braises?\b|\braised\b|\bfunding\b|\bvaluation\b|\bipo\b|\bseries [a-e]\b|\bacqui(re|res|red|sition|sitions)\b", 3),
+        (r"\binvest(s|ed|ment|ments|ors?|ing)?\b|\brevenue\b|\bearnings\b|\bprofits?\b|\bstock\b|\bshares\b|\bwall street\b", 2),
+        (r"\bstartups?\b|\bpartnership\b|\bdeal\b|\beconomics\b|\bpricing\b|\bbubble\b|\bmarket (share|cap)\b|\blayoffs?\b", 2),
+        (r"\bbillions?\b|\bceo\b", 1)]),
+    ("Models & Releases", [
+        (r"\bnew model\b|\bopen[- ](source|weights?)\b|\breasoning models?\b|\bmultimodal\b|\bcontext window\b", 3),
+        (r"\b(launch|launches|launched|releases?|released|unveil\w*|introduc\w*|debuts?)\b|\bbenchmarks?\b|\bgpt-?\d\S*", 2),
+        (r"\b(claude|gemini|llama|mistral|grok|deepseek|qwen|sonnet|opus|haiku)\b|\bmodels?\b|\bversion \d|\bv\d(\.\d)?\b", 1)]),
+    ("Research", [
+        (r"\bresearch\w*|\bpapers?\b|\barxiv\b|\bstud(y|ies)\b|\bscientists?\b|\bbreakthroughs?\b|\bdiscover\w*", 2),
+        (r"\bprotein\w*|\bphysics\b|\bmath(s|ematics)?\b|\balgorithms?\b|\bdatasets?\b", 2),
+        (r"\buniversity\b|\bstanford\b|\bberkeley\b|\btraining\b|\bfine-?tun\w*", 1)]),
+    ("Products & Tools", [
+        (r"\bapps?\b|\bfeatures?\b|\bassistants?\b|\bbrowsers?\b|\bplugins?\b|\bextensions?\b|\bintegrat\w*|\brecommendations?\b", 2),
+        (r"\brolls? out\b|\brolled out\b|\brolling out\b|\bcopilot\b|\bchatgpt\b|\bchatbots?\b", 2),
+        (r"\btools?\b|\bapi\b|\bsdk\b|\bdevelopers?\b|\bcoding\b|\bagents?\b|\bworkflows?\b|\bsubscribers?\b", 1)]),
+    ("Society & Work", [
+        (r"\bjobs?\b|\bworkers?\b|\bemploy\w*|\bworkforce\b|\bcareers?\b|\bgambl\w*|\bmental health\b|\bloneliness\b", 3),
+        (r"\bschools?\b|\bstudents?\b|\bteachers?\b|\beducation\b|\bhealth\w*|\bmedical\b|\bdoctors?\b|\bpatients?\b", 2),
+        (r"\bartists?\b|\bcreators?\b|\bmusic\b|\bfilms?\b|\bhollywood\b|\bwriters?\b|\bauthors?\b|\bcompanions?\b|\brelationships?\b", 2),
+        (r"\bculture\b|\bsociety\b|\bkids?\b|\bchildren\b|\bteens?\b|\bpeople\b|\bhumans?\b", 1)]),
 ]
-CAT_RES = [(n, re.compile(p, re.I)) for n, p in CATEGORIES]
+CAT_RULES = [(n, [(re.compile(p, re.I), w) for p, w in rules]) for n, rules in CATEGORIES]
 DEFAULT_CAT = "Other"
+MIN_SCORE = 3
 
 STOP = set("""a an the of to in on for and or with by at from as is are was were be been it its this that
 these those new says say said will can could would has have had after over into about more how why what who
@@ -245,10 +279,11 @@ def similar(a, b):
     return jac >= 0.34 or (ovl >= 0.6 and inter >= 3)
 
 
-def categorise(text):
-    best, best_n = DEFAULT_CAT, 0
-    for name, rx in CAT_RES:
-        n = len(rx.findall(text))
+def categorise(titles, body=""):
+    """Pick the best category from headline text and snippet text (see CATEGORIES)."""
+    best, best_n = DEFAULT_CAT, MIN_SCORE - 1
+    for name, rules in CAT_RULES:
+        n = sum(w * (2 * bool(rx.search(titles)) + bool(rx.search(body))) for rx, w in rules)
         if n > best_n:
             best, best_n = name, n
     return best
@@ -347,7 +382,7 @@ def build(args):
             best_per_source.setdefault(a["source"], a)
         arts = list(best_per_source.values())
         lead = arts[0]
-        cat = categorise(" ".join(f'{a["title"]} {a["snippet"]}' for a in arts[:3]))
+        cat = categorise(" | ".join(a["title"] for a in arts[:3]), " ".join(a["snippet"] for a in arts[:3]))
         out.append({
             "id": f"c{i}",
             "category": cat,
