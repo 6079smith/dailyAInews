@@ -5,7 +5,7 @@ Phone-friendly dashboard (+ optional email digest) of the latest AI / AGI / ASI 
 - **Free to read only.** Only free sources are configured (`sources.json`); known paywalled domains are blocked, and every article page is checked for paywall markers (`isAccessibleForFree: false`, "subscribe to continue", etc.) before it's shown.
 - **Categorised & de-duplicated.** Stories about the same subject are clustered; each cluster shows the most relevant article (one per source, never several from the same outlet) plus "Also: …" links to other sources.
 - **Source picker.** Tap *Sources* to choose outlets; the choice is saved on your device and becomes your default.
-- **Auto-refresh.** A GitHub Action rebuilds it every 3 hours.
+- **Auto-refresh.** A GitHub Action rebuilds it every hour.
 
 ## Setup
 1. Repo **Settings → Pages → Source: GitHub Actions** (a private repo needs a plan that supports Pages).
