@@ -55,6 +55,9 @@ def strip_html(s):
 
 def snippet(text, limit=230):
     text = strip_html(text)
+    m = re.search(r"Points:\s*(\d+).*?Comments:\s*(\d+)", text)
+    if text.startswith("Article URL:") and m:   # Hacker News boilerplate
+        return f"{m.group(1)} points · {m.group(2)} comments on Hacker News"
     text = re.sub(r"(The post .{0,200}appeared first on .*|Continue reading.*|Read more.*|\[…\]|\[\.\.\.\])$", "", text, flags=re.I).strip()
     if len(text) <= limit:
         return text

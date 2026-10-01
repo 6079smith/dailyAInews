@@ -18,14 +18,14 @@ body .btn.primary{color:#fff}
 .chip[aria-pressed=true]{background:var(--acc);border-color:var(--acc);color:#fff}
 @media (prefers-color-scheme:dark){.chip[aria-pressed=true]{color:#0f1115}}
 .chip small{opacity:.7;margin-left:4px}
-main{padding:12px 12px 4px;max-width:960px;margin:0 auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:start}
+main{padding:12px 12px 4px;max-width:960px;margin:0 auto;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;align-items:stretch}
 .sect{grid-column:1/-1;margin:14px 0 0;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mut)}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px;height:100%}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px;min-width:0}
 .meta{font-size:11.5px;color:var(--mut);display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .meta b{color:var(--ink);font-weight:600}
 .card h3{font-size:15px;line-height:1.28;margin:4px 0 5px;overflow-wrap:anywhere}
 .card h3 a{color:inherit;text-decoration:none}.card h3 a:active,.card h3 a:hover{color:var(--acc)}
-.card p{margin:0;color:var(--mut);font-size:13px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.card p{margin:0;color:var(--mut);font-size:13px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;word-break:break-word}
 .also{margin-top:8px;padding-top:7px;border-top:1px dashed var(--line);font-size:13px;color:var(--mut)}
 .also a{color:var(--acc);text-decoration:none;margin-right:8px;white-space:nowrap;display:inline-block}
 .empty,.foot{grid-column:1/-1;text-align:center;color:var(--mut);font-size:13px;padding:16px}
