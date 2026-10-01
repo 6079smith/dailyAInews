@@ -46,3 +46,9 @@ main{padding:12px 12px 4px;max-width:960px;margin:0 auto;display:grid;grid-templ
 .loading .spin{animation:rot .8s linear infinite}
 @keyframes rot{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.loading .spin{animation:none;opacity:.5}}
+.search{width:100%;font:inherit;font-size:16px;padding:11px 14px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--ink);margin:2px 0 8px}
+.search:focus{outline:2px solid var(--acc);outline-offset:1px}
+.addnew{display:block;text-align:center;text-decoration:none;color:var(--acc);border-color:var(--acc);margin-top:12px}
+.nomatch{color:var(--mut);font-size:14px;padding:12px 0}
+.src em.tag{background:var(--accbg);color:var(--acc);border-radius:999px;padding:1px 8px;font-size:11px;margin-left:6px}
+[hidden]{display:none!important}

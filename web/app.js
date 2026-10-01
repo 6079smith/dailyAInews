@@ -2,9 +2,12 @@
   const KEY = "dailyAInews.sources.v1";
   const $ = (s) => document.querySelector(s);
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  let data, sel = new Set(), cat = "All";
+  let data, sel = new Set(), cat = "All", q = "";
 
   const load = () => { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } };
+  const SEEN = "dailyAInews.seen.v1";
+  const loadSeen = () => { try { const a = JSON.parse(localStorage.getItem(SEEN)); return Array.isArray(a) ? new Set(a) : null; } catch { return null; } };
+  const saveSeen = (ids) => { try { localStorage.setItem(SEEN, JSON.stringify(ids)); } catch {} };
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify([...sel])); } catch {} };
 
   const ago = (iso) => {
@@ -37,6 +40,10 @@
         sel = new Set((saved || d.sources.filter((s) => s.default).map((s) => s.id)).filter((id) => valid.has(id)));
         if (!sel.size) sel = new Set(d.sources.filter((s) => s.default).map((s) => s.id));
       } else sel = new Set([...sel].filter((id) => valid.has(id)));
+      // a source you added since your last visit switches itself on once
+      const seen = loadSeen();
+      if (seen) { d.sources.filter((x) => x.custom && !seen.has(x.id)).forEach((x) => sel.add(x.id)); save(); }
+      saveSeen(d.sources.map((x) => x.id));
       render();
       if (!manual) setUpdated();
       else if (prev === d.generated) setUpdated("already the latest");
@@ -98,11 +105,24 @@
   }
 
   function renderPicker() {
+    const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+    const hay = (s) => (s.name + " " + s.type + " " + s.id + " " + (s.site || "")).toLowerCase();
+    const list = data.sources.filter((s) => words.every((w) => hay(s).includes(w)));
     const groups = {};
-    data.sources.forEach((s) => (groups[s.type] = groups[s.type] || []).push(s));
-    $("#srcList").innerHTML = Object.entries(groups).map(([t, list]) =>
-      `<div class="srcgrp">${esc(t)}</div>` + list.map((s) =>
-        `<label class="src ${s.ok ? "" : "off"}"><input type="checkbox" value="${esc(s.id)}" ${sel.has(s.id) ? "checked" : ""}><span>${esc(s.name)}</span><em>${s.ok ? s.items + (s.items === 1 ? " item" : " items") : "unavailable"}</em></label>`).join("")).join("");
+    list.forEach((s) => (groups[s.type] = groups[s.type] || []).push(s));
+    const order = Object.keys(groups).sort((a, b) => (a === "Custom") - (b === "Custom") || a.localeCompare(b));
+    $("#srcList").innerHTML = list.length ? order.map((t) =>
+      `<div class="srcgrp">${esc(t)}</div>` + groups[t].map((s) =>
+        `<label class="src ${s.ok ? "" : "off"}"><input type="checkbox" value="${esc(s.id)}" ${sel.has(s.id) ? "checked" : ""}><span>${esc(s.name)}</span><em>${s.ok ? s.items + (s.items === 1 ? " item" : " items") : "unavailable"}</em></label>`).join("")).join("")
+      : `<p class="nomatch">No match in the catalog for “${esc(q)}”.</p>`;
+    const term = q.trim();
+    const add = $("#addNew");
+    add.hidden = $("#addHelp").hidden = term.length < 2;
+    if (term.length >= 2) {
+      add.textContent = (list.length ? "Not listed? " : "") + "Add “" + term + "” as a new source";
+      add.href = "https://github.com/" + data.repo + "/issues/new?title=" + encodeURIComponent("Add source: " + term) +
+        "&body=" + encodeURIComponent("Created from the dashboard. Just press “Submit new issue”. An automatic job will find the feed, check it is free to read, and add it (or list matches to choose with /add 1).");
+    }
   }
   const setAll = (ids) => { sel = new Set(ids); renderPicker(); render(); save(); };
 
@@ -112,11 +132,14 @@
     if (t.id === "refresh") { loadData(true); return; }
     if (!data) return;
     if (t.dataset.cat) { cat = t.dataset.cat; render(); scrollTo({ top: 0 }); }
-    else if (t.id === "openPicker") { renderPicker(); $("#sheet").hidden = false; }
+    else if (t.id === "openPicker") { q = ""; $("#srcSearch").value = ""; renderPicker(); $("#sheet").hidden = false; }
     else if ("close" in t.dataset || t.id === "saveSrc") { if (t.id === "saveSrc") save(); $("#sheet").hidden = true; }
     else if (t.id === "selAll") setAll(data.sources.map((s) => s.id));
     else if (t.id === "selNone") setAll([]);
     else if (t.id === "selDefault") setAll(data.sources.filter((s) => s.default).map((s) => s.id));
+  });
+  document.addEventListener("input", (e) => {
+    if (e.target.id === "srcSearch" && data) { q = e.target.value; renderPicker(); }
   });
   document.addEventListener("change", (e) => {
     if (e.target.matches("#srcList input")) {

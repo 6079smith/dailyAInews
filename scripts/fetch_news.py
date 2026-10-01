@@ -5,7 +5,7 @@ categorise.  Writes site/data/news.json.  Standard library only.
     python3 scripts/fetch_news.py                 # live
     python3 scripts/fetch_news.py --fixtures tests/fixtures   # offline test
 """
-import argparse, html, json, math, re, sys, time
+import argparse, html, json, math, os, re, sys, time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
@@ -361,9 +361,10 @@ def build(args):
 
     data = {
         "generated": now.isoformat(),
+        "repo": os.environ.get("GITHUB_REPOSITORY", "6079smith/dailyAInews"),
         "window_hours": args.hours,
         "sources": [{"id": s["id"], "name": s["name"], "type": s["type"],
-                     "default": s["id"] in cfg["default_sources"],
+                     "default": s["id"] in cfg["default_sources"], "custom": bool(s.get("custom")), "site": s.get("site", ""),
                      "items": status[s["id"]]["items"], "ok": status[s["id"]]["ok"]} for s in cfg["sources"]],
         "categories": [n for n, _ in CATEGORIES] + [DEFAULT_CAT],
         "stats": {"fetched": len(candidates), "paywalled_dropped": dropped, "stories": len(out)},
