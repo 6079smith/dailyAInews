@@ -73,6 +73,10 @@
     return out.sort((a, b) => b.rank - a.rank);
   }
 
+  const HUES = { "AGI & Superintelligence": 280, "Safety & Policy": 8, "Chips & Infrastructure": 188, "Business & Funding": 150, "Models & Releases": 222, Research: 38, "Products & Tools": 330, "Society & Work": 95 };
+  const hue = (c) => HUES[c] ?? 220;
+  const shash = (t) => [...t].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 7);
+  const initial = (t) => (t.replace(/^The /i, "")[0] || "?").toUpperCase();
   const name = (id) => (data.sources.find((s) => s.id === id) || {}).name || id;
 
   function render() {
@@ -103,19 +107,26 @@
       `<button class="row manage" id="manage">Add or remove sources…</button>`;
 
     const shown = cat === "All" ? all : all.filter((s) => s.cat === cat);
-    const card = (s) => `<article class="card">
-      <div class="meta"><b>${esc(name(s.lead.source))}</b><span>·</span><span>${ago(s.lead.published)}</span></div>
-      <h3><a href="${esc(s.lead.url)}" target="_blank" rel="noopener noreferrer">${esc(s.lead.title)}</a></h3>
-      ${s.lead.snippet ? `<p>${esc(s.lead.snippet)}</p>` : ""}
-      ${s.also.length ? `<div class="also">Also: ${s.also.map((a) => `<a href="${esc(a.url)}" target="_blank" rel="noopener noreferrer">${esc(name(a.source))}</a>`).join("")}</div>` : ""}
+    let n = 0;
+    const card = (s, hero) => {
+      const l = s.lead, fresh = Date.now() - new Date(l.published) < 3 * 3600 * 1000;
+      return `<article class="card${hero ? " hero" : ""}${fresh ? " fresh" : ""}" style="--h:${hue(s.cat)};--i:${Math.min(n++, 10)}">
+      ${hero ? `<span class="kick">Top story · ${esc(s.cat)}</span>` : ""}
+      <div class="m"><span class="av" style="background:hsl(${shash(l.source)} 60% 45%)" aria-hidden="true">${esc(initial(name(l.source)))}</span><span class="who"><span class="sn">${esc(name(l.source))}</span><span class="age">${ago(l.published)}</span></span></div>${fresh ? '<span class="new">NEW</span>' : ""}
+      <h3><a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.title)}</a></h3>
+      ${l.snippet ? `<p>${esc(l.snippet)}</p>` : ""}
+      ${s.also.length ? `<div class="also"><span class="lbl">Also:</span>${s.also.map((a) => `<a href="${esc(a.url)}" target="_blank" rel="noopener noreferrer">${esc(name(a.source))}</a>`).join("")}</div>` : ""}
     </article>`;
+    };
     let html = "";
     if (cat === "All") {
+      const [top, ...rest] = shown;
+      if (top) html += card(top, true);
       for (const c of data.categories) {
-        const g = shown.filter((s) => s.cat === c);
-        if (g.length) html += `<h2 class="sect">${esc(c)}</h2>` + g.map(card).join("");
+        const g = rest.filter((s) => s.cat === c);
+        if (g.length) html += `<h2 class="sect" style="--h:${hue(c)}">${esc(c)}<span class="n">${g.length}</span></h2>` + g.map((s) => card(s)).join("");
       }
-    } else html = shown.map(card).join("");
+    } else html = shown.map((s) => card(s)).join("");
     $("#feed").innerHTML = html;
     $("#empty").hidden = shown.length > 0;
     const st = data.stats;
@@ -143,6 +154,26 @@
     }
   }
   const setAll = (ids) => { sel = new Set(ids); renderPicker(); render(); save(); };
+
+  // pointer glow + gentle tilt on desktop (not touch, not reduced-motion)
+  const fine = matchMedia("(hover:hover) and (pointer:fine)").matches && !matchMedia("(prefers-reduced-motion:reduce)").matches;
+  if (fine) {
+    let raf = 0;
+    $("#feed").addEventListener("pointermove", (e) => {
+      const c = e.target.closest(".card:not(.sk)");
+      if (!c || raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        const r = c.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+        c.style.setProperty("--mx", x * 100 + "%"); c.style.setProperty("--my", y * 100 + "%");
+        c.style.setProperty("--ry", (x - .5) * 5 + "deg"); c.style.setProperty("--rx", (.5 - y) * 4 + "deg");
+      });
+    });
+    $("#feed").addEventListener("pointerout", (e) => {
+      const c = e.target.closest(".card");
+      if (c && !c.contains(e.relatedTarget)) { c.style.removeProperty("--rx"); c.style.removeProperty("--ry"); }
+    });
+  }
 
   // dropdown panels: one open at a time; click outside or Esc closes
   function closePanels() {
