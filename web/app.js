@@ -17,6 +17,13 @@
   const SEEN = "dailyAInews.seen.v1";
   const loadSeen = () => { try { const a = JSON.parse(localStorage.getItem(SEEN)); return Array.isArray(a) ? new Set(a) : null; } catch { return null; } };
   const saveSeen = (ids) => { try { localStorage.setItem(SEEN, JSON.stringify(ids)); } catch {} };
+  const SAVED = "dailyAInews.saved.v1";
+  const loadSaved = () => { try { const a = JSON.parse(localStorage.getItem(SAVED)); return Array.isArray(a) ? a.filter((x) => x && typeof x.id === "string" && typeof x.url === "string") : []; } catch { return []; } };
+  const writeSaved = (list) => { try { localStorage.setItem(SAVED, JSON.stringify(list)); } catch {} };
+  const saved = new Map(loadSaved().map((x) => [x.id, x]));
+  const persist = () => writeSaved([...saved.values()]);
+  const cards = new Map();
+  let mode = "feed", n = 0;
   const save = (intentionalEmpty = false) => {
     try { localStorage.setItem(KEY, JSON.stringify({ ids: [...sel], intentionalEmpty: intentionalEmpty && !sel.size })); } catch {}
   };
@@ -58,6 +65,7 @@
       const newCustom = seen ? d.sources.filter((x) => x.custom && x.ok && !seen.has(x.id)) : [];
       if (newCustom.length) { newCustom.forEach((x) => sel.add(x.id)); save(); }
       saveSeen(d.sources.map((x) => x.id));
+      badge();
       render();
       if (!manual) setUpdated();
       else if (prev === d.generated) setUpdated("already the latest");
@@ -97,6 +105,57 @@
   const initial = (t) => (t.replace(/^The /i, "")[0] || "?").toUpperCase();
   const name = (id) => (data.sources.find((s) => s.id === id) || {}).name || id;
 
+  const nm = (x) => x.sourceName || name(x.source);
+  const BM = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z" stroke-width="2" stroke-linejoin="round"/></svg>';
+  const chip = (id) => `<button class="rd" data-unread="${esc(id)}">✓ Read</button>`;
+  const toSaved = (s) => ({ id: s.lead.url, url: s.lead.url, title: s.lead.title, snippet: s.lead.snippet || "", source: s.lead.source, sourceName: nm(s.lead), cat: s.cat, published: s.lead.published, savedAt: new Date().toISOString(), readAt: null, also: s.also.map((a) => ({ url: a.url, sourceName: nm(a) })) });
+  const badge = () => {
+    const u = [...saved.values()].filter((x) => !x.readAt).length;
+    $("#savedCount").textContent = u; $("#savedCount").hidden = !u;
+  };
+  // bring one card's bookmark, dim state and "Read" chip in line with the saved map
+  function syncCard(el) {
+    const it = saved.get(el.dataset.id), b = el.querySelector(".bm");
+    b.setAttribute("aria-pressed", !!it); b.setAttribute("aria-label", it ? "Remove from saved" : "Save for later");
+    el.classList.toggle("read", !!(it && it.readAt));
+    const c = el.querySelector(".rd");
+    if (c) c.remove();
+    if (it && it.readAt) el.querySelector(".age").insertAdjacentHTML("beforeend", chip(it.url));
+  }
+  const card = (s, hero, sv) => {
+    const l = s.lead, it = saved.get(l.url), fresh = !sv && Date.now() - new Date(l.published) < 3 * 3600 * 1000, read = it && it.readAt;
+    cards.set(l.url, s);
+    return `<article class="card${hero ? " hero" : ""}${fresh ? " fresh" : ""}${read ? " read" : ""}" data-id="${esc(l.url)}" style="--h:${hue(s.cat)};--i:${Math.min(n++, 10)}">
+      ${hero ? `<span class="kick">Top story · ${esc(s.cat)}</span>` : ""}
+      <div class="m"><span class="av" style="background:hsl(${shash(l.source || nm(l))} 60% 45%)" aria-hidden="true">${esc(initial(nm(l)))}</span><span class="who"><span class="sn">${esc(nm(l))}</span><span class="age">${sv ? "saved " + ago(it.savedAt) : ago(l.published)}${read ? chip(l.url) : ""}</span></span></div>${fresh ? '<span class="new">NEW</span>' : ""}
+      <button class="bm" data-save="${esc(l.url)}" aria-pressed="${!!it}" aria-label="${it ? "Remove from saved" : "Save for later"}">${BM}</button>
+      <h3><a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.title)}</a></h3>
+      ${l.snippet ? `<p>${esc(l.snippet)}</p>` : ""}
+      ${s.also.length ? `<div class="also"><span class="lbl">Also:</span>${s.also.map((a) => `<a href="${esc(a.url)}" target="_blank" rel="noopener noreferrer">${esc(nm(a))}</a>`).join("")}</div>` : ""}
+    </article>`;
+  };
+
+  function renderSaved() {
+    n = 0; cards.clear();
+    const all = [...saved.values()].sort((a, b) => String(b.savedAt).localeCompare(String(a.savedAt)));
+    const unread = all.filter((x) => !x.readAt), read = all.filter((x) => x.readAt);
+    const sect = (t, h, l) => l.length ? `<h2 class="sect" style="--h:${h}">${t} (${l.length})</h2>` + l.map((x) => card({ cat: x.cat, lead: x, also: x.also || [] }, false, true)).join("") : "";
+    $("#feed").innerHTML = (read.length ? '<div class="tools"><button id="clearRead" class="btn small">Clear read</button></div>' : "") + sect("Unread", 222, unread) + sect("Read", 150, read);
+    $("#empty").textContent = "Nothing saved yet. Tap the bookmark on any story.";
+    $("#empty").hidden = all.length > 0;
+    $("#foot").textContent = `${all.length} saved · ${unread.length} unread`;
+  }
+
+  badge();
+  function markRead(id, on = true) {
+    const it = saved.get(id);
+    if (!it || !!it.readAt === on) return;
+    it.readAt = on ? new Date().toISOString() : null;
+    persist(); badge();
+    if (mode === "saved") renderSaved();
+    else { const el = $$(".card").find((c) => c.dataset.id === id); if (el) syncCard(el); }
+  }
+
   function render() {
     if (srcF && !sel.has(srcF)) srcF = null;
     const all = view(srcF);
@@ -106,6 +165,9 @@
     $("#srcCount").textContent = sel.size;
     $("#catLabel").textContent = cat;
     $("#srcLabel").textContent = srcF ? name(srcF) : "All (" + sel.size + ")";
+    $(".drops").hidden = mode === "saved";
+    if (mode === "saved") { closePanels(); return renderSaved(); }
+    n = 0; cards.clear();
 
     // Category dropdown: counts reflect the current source filter
     $("#panelCat").innerHTML = [["All", all.length], ...data.categories.filter((c) => counts[c]).map((c) => [c, counts[c]])].map(([c, n]) =>
@@ -125,17 +187,6 @@
       `<button class="row manage" id="manage">Add or remove sources…</button>`;
 
     const shown = cat === "All" ? all : all.filter((s) => s.cat === cat);
-    let n = 0;
-    const card = (s, hero) => {
-      const l = s.lead, fresh = Date.now() - new Date(l.published) < 3 * 3600 * 1000;
-      return `<article class="card${hero ? " hero" : ""}${fresh ? " fresh" : ""}" style="--h:${hue(s.cat)};--i:${Math.min(n++, 10)}">
-      ${hero ? `<span class="kick">Top story · ${esc(s.cat)}</span>` : ""}
-      <div class="m"><span class="av" style="background:hsl(${shash(l.source)} 60% 45%)" aria-hidden="true">${esc(initial(name(l.source)))}</span><span class="who"><span class="sn">${esc(name(l.source))}</span><span class="age">${ago(l.published)}</span></span></div>${fresh ? '<span class="new">NEW</span>' : ""}
-      <h3><a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.title)}</a></h3>
-      ${l.snippet ? `<p>${esc(l.snippet)}</p>` : ""}
-      ${s.also.length ? `<div class="also"><span class="lbl">Also:</span>${s.also.map((a) => `<a href="${esc(a.url)}" target="_blank" rel="noopener noreferrer">${esc(name(a.source))}</a>`).join("")}</div>` : ""}
-    </article>`;
-    };
     let html = "";
     if (cat === "All") {
       const [top, ...rest] = shown;
@@ -235,11 +286,29 @@
   });
 
   document.addEventListener("click", (e) => {
-    const t = e.target.closest("[data-pick-cat],[data-pick-src],#dropCat,#dropSrc,#manage,[data-close],#refresh,#retry,#openPicker,#selAll,#selNone,#selDefault,#saveSrc");
+    const a = e.target.closest(".card a");
+    if (a) { markRead(a.closest(".card").dataset.id); return; }
+    const t = e.target.closest("[data-save],[data-unread],#openSaved,#clearRead,[data-pick-cat],[data-pick-src],#dropCat,#dropSrc,#manage,[data-close],#refresh,#retry,#openPicker,#selAll,#selNone,#selDefault,#saveSrc");
     if (!t) return;
     if (t.id === "refresh" || t.id === "retry") { loadData(true); return; }
     if (!data) return;
-    if ("pickCat" in t.dataset) { cat = t.dataset.pickCat; closePanels(); render(); scrollTo({ top: 0 }); }
+    if ("save" in t.dataset) {
+      const id = t.dataset.save, s = cards.get(id);
+      if (saved.has(id)) saved.delete(id); else if (s) saved.set(id, toSaved(s));
+      persist(); badge(); syncCard(t.closest(".card"));
+      if (saved.has(id)) { t.classList.remove("pop"); void t.offsetWidth; t.classList.add("pop"); }
+    }
+    else if ("unread" in t.dataset) markRead(t.dataset.unread, false);
+    else if (t.id === "openSaved") {
+      mode = mode === "feed" ? "saved" : "feed";
+      t.setAttribute("aria-pressed", mode === "saved"); t.firstChild.textContent = mode === "saved" ? "← Feed " : "Saved ";
+      render(); scrollTo({ top: 0 });
+    }
+    else if (t.id === "clearRead") {
+      const r = [...saved.values()].filter((x) => x.readAt);
+      if (r.length && confirm(`Remove ${r.length} read ${r.length === 1 ? "story" : "stories"}?`)) { r.forEach((x) => saved.delete(x.id)); persist(); badge(); renderSaved(); }
+    }
+    else if ("pickCat" in t.dataset) { cat = t.dataset.pickCat; closePanels(); render(); scrollTo({ top: 0 }); }
     else if ("pickSrc" in t.dataset) { srcF = t.dataset.pickSrc || null; closePanels(); render(); scrollTo({ top: 0 }); }
     else if (t.id === "dropCat" || t.id === "dropSrc") togglePanel(t.id === "dropCat" ? "Cat" : "Src");
     else if (t.id === "manage") { closePanels(); openSheet(); }
