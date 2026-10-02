@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 import xml.etree.ElementTree as ET
@@ -111,6 +111,23 @@ def snippet(text, limit=230):
     return cut.rstrip(",;:—- ") + "…"
 
 
+def web_url(u):
+    """Absolute http(s) URL or "" (keeps javascript:/data: etc. out of the page)."""
+    u = html.unescape((u or "").strip())
+    if u.startswith("//"):
+        u = "https:" + u
+    return u if re.match(r"https?://[^\s\"'<>]+$", u) else ""
+
+
+def first_img(markup):
+    """First real <img> in feed HTML (skips 1px tracking pixels)."""
+    for tag in re.findall(r"<img\b[^>]*>", markup or "", re.I):
+        m = re.search(r"\bsrc=[\"']([^\"']+)", tag, re.I)
+        if m and not re.search(r"\b(width|height)=[\"']?[01]\b", tag, re.I) and web_url(m.group(1)):
+            return web_url(m.group(1))
+    return ""
+
+
 def parse_date(s):
     if not s:
         return None
@@ -186,8 +203,12 @@ def local(tag):
     return tag.rsplit("}", 1)[-1]
 
 
+def is_image(el):
+    return bool(el.get("url")) and (el.get("type") or el.get("medium") or "image").lower().startswith("image")
+
+
 def parse_feed(xml_bytes):
-    """Return list of dicts: title, url, summary, published (RSS 2.0 and Atom)."""
+    """Return list of dicts: title, url, summary, body, image, published (RSS 2.0 and Atom)."""
     try:
         root = ET.fromstring(xml_bytes)
     except ET.ParseError:
@@ -203,8 +224,9 @@ def parse_feed(xml_bytes):
     for el in root.iter():
         if local(el.tag) not in ("item", "entry"):
             continue
-        d = {"title": "", "url": "", "summary": "", "published": None}
+        d = {"title": "", "url": "", "summary": "", "body": "", "image": "", "published": None}
         content = ""
+        img = ""
         for ch in el:
             t = local(ch.tag)
             txt = (ch.text or "").strip()
@@ -215,6 +237,11 @@ def parse_feed(xml_bytes):
                     d["url"] = txt
                 elif ch.get("href") and ch.get("rel", "alternate") == "alternate":
                     d["url"] = ch.get("href")
+            elif t in ("thumbnail", "enclosure") or (t == "content" and ch.get("url")):   # media:/enclosure images
+                if not img and is_image(ch):
+                    img = web_url(ch.get("url"))
+            elif t == "group":   # <media:group><media:content url=… /></media:group>
+                img = img or next((web_url(g.get("url")) for g in ch if local(g.tag) in ("content", "thumbnail") and is_image(g)), "")
             elif t in ("description", "summary"):
                 d["summary"] = txt
             elif t in ("encoded", "content"):
@@ -225,6 +252,9 @@ def parse_feed(xml_bytes):
             d["summary"] = content
         elif content and len(strip_html(d["summary"])) < 80:
             d["summary"] = content
+        # longer text for the expanded view: whichever of summary / full content says more
+        d["body"] = max((d["summary"], content), key=lambda x: len(strip_html(x)))
+        d["image"] = img or first_img(content) or first_img(d["summary"])
         if d["title"] and d["url"]:
             items.append(d)
     return items
@@ -239,23 +269,24 @@ PAYWALL_MARKERS = re.compile(
 
 
 def check_article(url, blocked, fixtures):
-    """Return (ok, meta_description). ok False => paywalled/unreadable."""
+    """Return (ok, meta_description, og_image). ok False => paywalled/unreadable."""
     if is_blocked(url, blocked):
-        return False, ""
+        return False, "", ""
     if fixtures:
-        return True, ""
+        return True, "", ""
     try:
         status, body, cs = http_get(url, timeout=15, max_bytes=300_000)
     except Exception as e:
         code = getattr(e, "code", None)
         if code in (401, 402):
-            return False, ""
-        return True, ""   # source is vetted-free; can't verify (bot block / timeout) -> keep
+            return False, "", ""
+        return True, "", ""   # source is vetted-free; can't verify (bot block / timeout) -> keep
     page = decode(body, cs)
     if PAYWALL_MARKERS.search(page):
-        return False, ""
+        return False, "", ""
     m = re.search(r'<meta[^>]+(?:property="og:description"|name="description")[^>]+content="([^"]*)"', page, re.I)
-    return True, html.unescape(m.group(1)) if m else ""
+    im = re.search(r'<meta[^>]+(?:property="og:image"|name="twitter:image")[^>]+content="([^"]*)"', page, re.I)
+    return True, html.unescape(m.group(1)) if m else "", web_url(urljoin(url, html.unescape(im.group(1)))) if im else ""
 
 
 # ---- scoring / clustering ---------------------------------------------------
@@ -337,7 +368,7 @@ def build(args):
                 continue
             candidates.append({
                 "source": sid, "title": it["title"], "url": it["url"].split("#")[0],
-                "snippet": snippet(it["summary"]), "published": dt.isoformat(), "_dt": dt,
+                "snippet": snippet(it["summary"]), "summary": snippet(it["body"], 1000), "image": it["image"], "published": dt.isoformat(), "_dt": dt,
                 "_w": src["weight"],
             })
             kept += 1
@@ -351,7 +382,8 @@ def build(args):
 
     # paywall check, concurrent
     def chk(a):
-        ok, desc = check_article(a["url"], blocked, fixtures)
+        ok, desc, img = check_article(a["url"], blocked, fixtures)
+        a["image"] = a["image"] or img
         return a, ok, desc
     with ThreadPoolExecutor(12) as ex:
         checked = list(ex.map(chk, candidates))
@@ -363,6 +395,8 @@ def build(args):
             continue
         if len(a["snippet"]) < 70 and desc:
             a["snippet"] = snippet(desc)
+            if len(a["summary"]) < len(desc):
+                a["summary"] = snippet(desc, 1000)
         free.append(a)
 
     # cluster
@@ -390,6 +424,9 @@ def build(args):
             "articles": [{
                 "source": a["source"], "title": a["title"], "url": a["url"],
                 "snippet": a["snippet"], "published": a["published"], "score": a["score"],
+                # longer text and a thumbnail for the expanded view; omitted when they add nothing
+                **({"summary": a["summary"]} if len(a["summary"]) > len(a["snippet"]) else {}),
+                **({"image": a["image"]} if a["image"] else {}),
             } for a in arts],
         })
     out.sort(key=lambda c: c["score"], reverse=True)

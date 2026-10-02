@@ -5,6 +5,7 @@
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   let data, sel = new Set(), cat = "All", q = "", srcF = null;
   let selectionInitialised = false, draftSel = null, lastFocus = null;
+  let cards = [], openS = null, readerFocus = null, closing = false;
 
   // Read the old array format too, so existing visitors keep their choices.
   const load = () => {
@@ -17,6 +18,16 @@
   const SEEN = "dailyAInews.seen.v1";
   const loadSeen = () => { try { const a = JSON.parse(localStorage.getItem(SEEN)); return Array.isArray(a) ? new Set(a) : null; } catch { return null; } };
   const saveSeen = (ids) => { try { localStorage.setItem(SEEN, JSON.stringify(ids)); } catch {} };
+  // Stories you've opened, by article URL (all sources in the story), so the greyed-out state survives refreshes.
+  const READ = "dailyAInews.read.v1";
+  const readSet = (() => { try { const a = JSON.parse(localStorage.getItem(READ)); return new Set(Array.isArray(a) ? a : []); } catch { return new Set(); } })();
+  const urlsOf = (s) => [s.lead, ...s.also].map((a) => a.url);
+  const isRead = (s) => urlsOf(s).some((u) => readSet.has(u));
+  const setRead = (s, on) => {
+    urlsOf(s).forEach((u) => { readSet.delete(u); if (on) readSet.add(u); });
+    try { localStorage.setItem(READ, JSON.stringify([...readSet].slice(-1500))); } catch {}
+    paintRead();
+  };
   const save = (intentionalEmpty = false) => {
     try { localStorage.setItem(KEY, JSON.stringify({ ids: [...sel], intentionalEmpty: intentionalEmpty && !sel.size })); } catch {}
   };
@@ -96,6 +107,69 @@
   const shash = (t) => [...t].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 7);
   const initial = (t) => (t.replace(/^The /i, "")[0] || "?").toUpperCase();
   const name = (id) => (data.sources.find((s) => s.id === id) || {}).name || id;
+  const avatar = (id) => `<span class="av" style="background:hsl(${shash(id)} 60% 45%)" aria-hidden="true">${esc(initial(name(id)))}</span>`;
+  const paintRead = () => $$(".card[data-k]").forEach((el) => el.classList.toggle("read", isRead(cards[el.dataset.k])));
+  const cardOf = (s) => s && $$(".card[data-k]").find((el) => cards[el.dataset.k].lead.url === s.lead.url);
+
+  // Expanded view: the tapped card grows to fill most of the window; closing it greys the card out as read.
+  const motion = () => !matchMedia("(prefers-reduced-motion:reduce)").matches;
+  const fromRect = (box, el) => {
+    const a = el.getBoundingClientRect(), b = box.getBoundingClientRect();
+    return `translate(${a.left - b.left}px,${a.top - b.top}px) scale(${a.width / b.width},${a.height / b.height})`;
+  };
+  function openReader(el) {
+    const s = cards[el.dataset.k], l = s.lead;
+    const img = [l, ...s.also].map((a) => a.image).find((u) => /^https?:\/\//.test(u || ""));
+    // lead's own text, unless it's a short blurb and another outlet in the story has a fuller summary
+    const txt = (a) => a.summary || a.snippet || "";
+    const best = [l, ...s.also].reduce((x, a) => (txt(a).length > txt(x).length ? a : x), l);
+    const from = txt(l).length < 300 && txt(best).length > txt(l).length + 120 ? best : l, text = txt(from);
+    $("#readerBody").innerHTML = `<span class="kick">${esc(s.cat)}</span>
+      <div class="m">${avatar(l.source)}<span class="who"><span class="sn">${esc(name(l.source))}</span><span class="age">${ago(l.published)}</span></span></div>
+      <h2 id="readerTitle">${esc(l.title)}</h2>
+      ${img ? `<figure class="thumb"><img src="${esc(img)}" alt="" referrerpolicy="no-referrer" decoding="async"></figure>` : ""}
+      ${text ? `<p class="rtext">${esc(text)}</p>` : ""}${from !== l ? `<p class="via">Summary from ${esc(name(from.source))}</p>` : ""}
+      <a class="btn primary go" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">Read the full article on ${esc(name(l.source))} <span aria-hidden="true">↗</span></a>
+      ${s.also.length ? `<div class="ralso"><span class="lbl">Also covered by</span>${s.also.map((a) => `<a href="${esc(a.url)}" target="_blank" rel="noopener noreferrer"><b>${esc(name(a.source))}</b><span>${esc(a.title)}</span></a>`).join("")}</div>` : ""}`;
+    const im = $("#readerBody img");
+    if (im) im.onerror = () => im.closest("figure").remove();
+    openS = s;
+    readerFocus = el.querySelector("h3 a");
+    closePanels();
+    $("#reader").style.setProperty("--h", hue(s.cat));
+    $("#reader").hidden = false;
+    document.documentElement.classList.add("reading");
+    const box = $(".reader-card");
+    box.scrollTop = 0;
+    if (motion()) {
+      const ease = { duration: 340, easing: "cubic-bezier(.2,.8,.2,1)" };
+      box.animate([{ transform: fromRect(box, el), transformOrigin: "0 0", borderRadius: "20px" }, { transform: "none", transformOrigin: "0 0" }], ease);
+      $("#readerBody").animate([{ opacity: 0 }, { opacity: 0, offset: .45 }, { opacity: 1 }], ease);
+      $(".reader-bg").animate([{ opacity: 0 }, { opacity: 1 }], ease);
+    }
+    box.focus({ preventScroll: true });
+  }
+  function closeReader() {
+    if ($("#reader").hidden || closing) return;
+    const s = openS, el = cardOf(s), box = $(".reader-card");
+    const done = () => {
+      closing = false;
+      $("#reader").hidden = true;
+      document.documentElement.classList.remove("reading");
+      openS = null;
+      if (s) setRead(s, true);
+      const f = el && el.querySelector("h3 a");
+      if (f) f.focus({ preventScroll: true }); else if (readerFocus && document.contains(readerFocus)) readerFocus.focus({ preventScroll: true });
+      readerFocus = null;
+    };
+    const r = el && el.getBoundingClientRect();
+    if (!motion() || !r || r.bottom < 0 || r.top > innerHeight) return done();
+    closing = true;
+    const ease = { duration: 260, easing: "cubic-bezier(.4,0,.2,1)" };
+    $("#readerBody").animate([{ opacity: 1 }, { opacity: 0, offset: .4 }, { opacity: 0 }], ease);
+    $(".reader-bg").animate([{ opacity: 1 }, { opacity: 0 }], ease);
+    box.animate([{ transform: "none", transformOrigin: "0 0" }, { transform: fromRect(box, el), transformOrigin: "0 0", borderRadius: "20px", opacity: .7 }], ease).onfinish = done;
+  }
 
   function render() {
     if (srcF && !sel.has(srcF)) srcF = null;
@@ -125,12 +199,12 @@
       `<button class="row manage" id="manage">Add or remove sources…</button>`;
 
     const shown = cat === "All" ? all : all.filter((s) => s.cat === cat);
-    let n = 0;
+    cards = [];
     const card = (s, hero) => {
-      const l = s.lead, fresh = Date.now() - new Date(l.published) < 3 * 3600 * 1000;
-      return `<article class="card${hero ? " hero" : ""}${fresh ? " fresh" : ""}" style="--h:${hue(s.cat)};--i:${Math.min(n++, 10)}">
+      const l = s.lead, fresh = Date.now() - new Date(l.published) < 3 * 3600 * 1000, k = cards.push(s) - 1;
+      return `<article class="card${hero ? " hero" : ""}${fresh ? " fresh" : ""}${isRead(s) ? " read" : ""}" data-k="${k}" style="--h:${hue(s.cat)};--i:${Math.min(k, 10)}">
       ${hero ? `<span class="kick">Top story · ${esc(s.cat)}</span>` : ""}
-      <div class="m"><span class="av" style="background:hsl(${shash(l.source)} 60% 45%)" aria-hidden="true">${esc(initial(name(l.source)))}</span><span class="who"><span class="sn">${esc(name(l.source))}</span><span class="age">${ago(l.published)}</span></span></div>${fresh ? '<span class="new">NEW</span>' : ""}
+      <div class="m">${avatar(l.source)}<span class="who"><span class="sn">${esc(name(l.source))}</span><span class="age">${ago(l.published)}</span></span><button class="readchip" data-unread aria-label="Read. Mark as unread" title="Mark as unread"><span class="rl">Read</span>✓</button></div>${fresh ? '<span class="new">NEW</span>' : ""}
       <h3><a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.title)}</a></h3>
       ${l.snippet ? `<p>${esc(l.snippet)}</p>` : ""}
       ${s.also.length ? `<div class="also"><span class="lbl">Also:</span>${s.also.map((a) => `<a href="${esc(a.url)}" target="_blank" rel="noopener noreferrer">${esc(name(a.source))}</a>`).join("")}</div>` : ""}
@@ -222,12 +296,14 @@
   document.addEventListener("click", (e) => { if (!e.target.closest(".drops,.panel")) closePanels(); });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
-      if (!$("#sheet").hidden) closeSheet();
+      if (!$("#reader").hidden) closeReader();
+      else if (!$("#sheet").hidden) closeSheet();
       else closePanels();
       return;
     }
-    if (e.key === "Tab" && !$("#sheet").hidden) {
-      const focusable = $$("#sheet button, #sheet input, #sheet a[href]").filter((el) => !el.disabled && el.offsetParent !== null);
+    const trap = !$("#reader").hidden ? "#reader" : !$("#sheet").hidden ? "#sheet" : null;
+    if (e.key === "Tab" && trap) {
+      const focusable = $$(`${trap} button, ${trap} input, ${trap} a[href]`).filter((el) => !el.disabled && el.offsetParent !== null);
       const first = focusable[0], last = focusable.at(-1);
       if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
       else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
@@ -235,6 +311,12 @@
   });
 
   document.addEventListener("click", (e) => {
+    if (e.target.closest("[data-close-reader]")) { closeReader(); return; }
+    const chip = e.target.closest(".card [data-unread]");
+    if (chip) { setRead(cards[chip.closest(".card").dataset.k], false); return; }
+    // tapping a story opens the expanded view; ctrl/cmd/shift/middle-click still open the page directly
+    const link = e.target.closest(".card[data-k] h3 a");
+    if (link && !(e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button)) { e.preventDefault(); openReader(link.closest(".card")); return; }
     const t = e.target.closest("[data-pick-cat],[data-pick-src],#dropCat,#dropSrc,#manage,[data-close],#refresh,#retry,#openPicker,#selAll,#selNone,#selDefault,#saveSrc");
     if (!t) return;
     if (t.id === "refresh" || t.id === "retry") { loadData(true); return; }
