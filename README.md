@@ -7,6 +7,7 @@ Phone-friendly dashboard (+ optional email digest) of the latest AI / AGI / ASI 
 - **Tap to expand.** Tapping a story opens it full-size in place, with a longer summary, a thumbnail when the feed or article has one, the link to the full article and the other outlets covering it. Close it and the card greys out as read (remembered on this device); tap its *Read ✓* chip to mark it unread. Ctrl/⌘-click still opens the article directly.
 - **Source picker.** Tap *Sources* to choose outlets; the choice is saved on your device and becomes your default.
 - **Add your own source.** In *Sources*, type a name or website. It filters the built-in catalog; if it isn't there, tap **Add “…” as a new source**. That opens a pre-filled GitHub issue (just press *Submit new issue*). A workflow (`add-source.yml`) then finds the feed, checks it is readable, recent and free of paywalls, and either adds it (new sources are on by default) or lists matches for you to choose by replying `/add 2`. Only issues/comments from the repo owner are acted on.
+- **Read later.** Tap the bookmark on any story to save it on this device; open *Saved* to see unread and read stories, and clear read ones.
 - **Auto-refresh.** A GitHub Action rebuilds it every hour.
 
 ## Setup
