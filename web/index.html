@@ -16,24 +16,24 @@
       <button id="openPicker" class="btn" aria-label="Choose sources">Sources <span id="srcCount" class="pill"></span></button>
     </div>
   </div>
-  <div class="sub"><span class="dot" aria-hidden="true"></span><span id="updated">Loading…</span><span>·</span><span class="free">Free to read only</span></div>
+  <div class="sub"><span class="dot" aria-hidden="true"></span><span id="updated">Loading…</span></div>
   <div class="drops">
     <button id="dropCat" class="drop" aria-expanded="false" aria-controls="panelCat"><span class="dl">Category</span><b id="catLabel">All</b><i aria-hidden="true">▾</i></button>
     <button id="dropSrc" class="drop" aria-expanded="false" aria-controls="panelSrc"><span class="dl">Source</span><b id="srcLabel">All</b><i aria-hidden="true">▾</i></button>
   </div>
-  <div id="panelCat" class="panel" hidden></div>
-  <div id="panelSrc" class="panel" hidden></div>
+  <div id="panelCat" class="panel" role="group" aria-label="Filter by category" hidden></div>
+  <div id="panelSrc" class="panel" role="group" aria-label="Filter by source" hidden></div>
 </header>
 
-<main id="feed" aria-live="polite"><div class="card sk"></div><div class="card sk"></div><div class="card sk"></div><div class="card sk"></div><div class="card sk"></div><div class="card sk"></div></main>
+<main id="feed" aria-live="polite" aria-busy="true"><div class="card sk"></div><div class="card sk"></div><div class="card sk"></div><div class="card sk"></div><div class="card sk"></div><div class="card sk"></div></main>
 <p id="empty" class="empty" hidden>No stories for these sources and category. Try adding more sources.</p>
 <footer class="foot" id="foot"></footer>
 
 <div id="sheet" class="sheet" hidden>
   <div class="sheet-bg" data-close></div>
-  <section class="sheet-body" role="dialog" aria-modal="true" aria-label="Source picker">
+  <section class="sheet-body" role="dialog" aria-modal="true" aria-labelledby="sourcesTitle" tabindex="-1">
     <div class="sheet-head">
-      <h2>Your sources</h2>
+      <h2 id="sourcesTitle">Your sources</h2>
       <button class="btn ghost" data-close aria-label="Close">✕</button>
     </div>
     <p class="hint">Saved on this device and used as your default every visit.</p>
