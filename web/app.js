@@ -129,6 +129,7 @@
   const cardOf = (s) => s && $$(".card[data-id]").find((el) => el.dataset.id === s.lead.url);
 
   // Expanded view: the tapped card grows to fill most of the window; closing it greys the card out as read.
+  const day = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" }); };
   const motion = () => !matchMedia("(prefers-reduced-motion:reduce)").matches;
   const fromRect = (box, el) => {
     const a = el.getBoundingClientRect(), b = box.getBoundingClientRect();
@@ -143,6 +144,7 @@
     const from = txt(l).length < 300 && txt(best).length > txt(l).length + 120 ? best : l, text = txt(from);
     $("#readerBody").innerHTML = `<span class="kick">${esc(s.cat)}</span>
       <div class="m">${avatar(l)}<span class="who"><span class="sn">${esc(nm(l))}</span><span class="age">${ago(l.published)}</span></span></div>
+      ${day(l.published) ? `<p class="pub">Published <time datetime="${esc(l.published)}">${day(l.published)}</time></p>` : ""}
       <h2 id="readerTitle">${esc(l.title)}</h2>
       ${img ? `<figure class="thumb"><img src="${esc(img)}" alt="" referrerpolicy="no-referrer" decoding="async"></figure>` : ""}
       ${text ? `<p class="rtext">${esc(text)}</p>` : ""}${from !== l ? `<p class="via">Summary from ${esc(nm(from))}</p>` : ""}
