@@ -15,6 +15,8 @@ You are implementing a **Read later** feature in the `dailyAInews` repo. Read th
 - Cards are built in `render()` → `card(s, hero)`. **The whole card is tappable** through a stretched link: `.card h3 a::after { position:absolute; inset:0; z-index:1 }`. Anything clickable inside a card must sit above that layer with `position:relative; z-index:2`, the way `.also` does.
 - All click handling goes through one delegated `document.addEventListener("click", …)` that matches on `closest(...)`. Extend it rather than adding listeners per element.
 
+> **Note (added later):** this has been built, then merged with the tap-to-expand view. There is now a single read state: opening a story's expanded view and closing it marks it read (`dailyAInews.read.v1`, by article URL), and a saved story's `readAt` is kept in step with it via `setRead()` / `isRead()` in `web/app.js`. Headline taps open the expanded view instead of navigating; "Also" links still navigate and count as read.
+
 ## Decisions (final)
 
 | Topic | Decision |

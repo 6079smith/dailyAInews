@@ -41,7 +41,7 @@ h1{margin:0;font-size:22px;font-weight:800;letter-spacing:-.02em;background:line
 .btn:active{transform:scale(.96)}
 .btn.primary{background:linear-gradient(135deg,var(--t1),var(--t2));color:var(--onacc);border-color:transparent}
 .btn.ghost{border:0;background:transparent;font-size:18px}
-.btn:focus-visible,.drop:focus-visible,.row:focus-visible,.also a:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.btn:focus-visible,.drop:focus-visible,.row:focus-visible,.also a:focus-visible,.ralso a:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 .btn.small{padding:6px 12px;min-height:36px}
 .btn.wide{width:100%;margin-top:12px}
 .btn.icon{width:40px;padding:0;font-size:20px;line-height:1}
@@ -78,7 +78,7 @@ main{padding:14px 12px 4px;max-width:960px;margin:0 auto;display:grid;grid-templ
 .card{--c:hsl(var(--h) var(--sat) var(--lum));position:relative;min-width:0;border-radius:20px;padding:14px;overflow:hidden;
   background:linear-gradient(160deg,var(--glass1),var(--glass2));border:1px solid var(--bd);
   transform:perspective(800px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));
-  transition:transform .2s ease-out,box-shadow .25s,border-color .25s;
+  transition:transform .2s ease-out,box-shadow .25s,border-color .25s,opacity .5s,filter .5s;
   animation:in .55s cubic-bezier(.2,.8,.2,1) calc(var(--i,0)*55ms) backwards}
 @keyframes in{from{opacity:0;translate:0 16px}to{opacity:1;translate:0 0}}
 .card::before{content:"";position:absolute;inset:-45% auto auto -30%;width:85%;height:85%;background:radial-gradient(closest-side,hsl(var(--h) 90% 60%/var(--glow)),transparent);pointer-events:none}
@@ -107,7 +107,6 @@ main{padding:14px 12px 4px;max-width:960px;margin:0 auto;display:grid;grid-templ
 @keyframes pop{40%{transform:scale(1.35)}}
 .bm:focus-visible,.rd:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 .rd{position:relative;z-index:2;font:inherit;font-size:11px;font-weight:600;display:block;width:max-content;margin:3px 0 0;padding:1px 7px;border:0;border-radius:999px;background:var(--accbg);color:var(--acc);cursor:pointer}
-.card.read{opacity:.6}
 .tools{grid-column:1/-1;display:flex;justify-content:flex-end}
 .card h3{margin:10px 0 6px;font-size:15.5px;line-height:1.28;letter-spacing:-.01em;overflow-wrap:anywhere}
 .card h3 a{color:inherit;text-decoration:none}
@@ -118,6 +117,12 @@ main{padding:14px 12px 4px;max-width:960px;margin:0 auto;display:grid;grid-templ
 .also a{font-size:11.5px;background:var(--accbg);color:var(--acc);border-radius:999px;padding:3px 9px;text-decoration:none;white-space:nowrap}
 .also a:hover{filter:brightness(1.15)}
 .also .lbl{font-size:11.5px;color:var(--mut);padding:3px 0}
+/* read (opened and closed again): greyed out, still tappable */
+.card.read{filter:grayscale(1);opacity:.55}
+.card.read:hover,.card.read:focus-within{opacity:.8}
+.card.read .new{display:none}
+.card .rd{display:none}.card.read .rd{display:block}
+.rd::before{content:"";position:absolute;inset:-8px -6px}   /* bigger tap target */
 .hero{grid-column:1/-1;padding:18px;background:linear-gradient(150deg,hsl(var(--h) 90% 60%/.16),var(--glass1) 55%,var(--glass2))}
 .hero .kick{display:block}
 .hero h3{font-size:22px;line-height:1.2}
@@ -148,6 +153,27 @@ main{padding:14px 12px 4px;max-width:960px;margin:0 auto;display:grid;grid-templ
 .src.off{opacity:.55}
 .addnew{display:block;text-align:center;text-decoration:none;color:var(--acc);border-color:var(--acc);margin-top:12px}
 .nomatch{color:var(--mut);font-size:14px;padding:12px 0}
+
+/* expanded story */
+html.reading{overflow:hidden}
+.reader{position:fixed;inset:0;z-index:15}
+.reader-bg{position:absolute;inset:0;background:rgba(5,6,15,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.reader-card{position:absolute;inset:max(12px,env(safe-area-inset-top),4vh) max(10px,4vw) max(12px,env(safe-area-inset-bottom),4vh);max-width:1040px;margin:0 auto;overflow:auto;overscroll-behavior:contain;
+  background:linear-gradient(160deg,hsl(var(--h) 90% 60%/.14),var(--sheet) 45%),var(--sheet);border:1px solid hsl(var(--h) 85% 62%/.45);border-radius:24px;box-shadow:0 30px 80px -20px var(--shadow);outline:0}
+.reader-x{position:sticky;top:8px;float:right;z-index:3;margin:8px 8px 0 0;width:44px;height:44px;padding:0;border-radius:50%;background:var(--glass1);border:1px solid var(--bd);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+#readerBody{padding:20px clamp(18px,4vw,44px) 28px;max-width:860px;margin:0 auto}
+#readerBody .kick{display:block;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:hsl(var(--h) var(--sat) var(--lum));margin:4px 0 12px}
+#readerBody h2{margin:14px 0 16px;font-size:clamp(22px,4.2vw,34px);line-height:1.18;letter-spacing:-.02em;overflow-wrap:anywhere}
+.thumb{margin:0 0 16px;border-radius:16px;overflow:hidden;background:var(--glass2);border:1px solid var(--bd);aspect-ratio:16/9;max-height:34vh;width:100%}
+.thumb img{display:block;width:100%;height:100%;object-fit:cover}
+.via{margin:-12px 0 20px;font-size:12.5px;color:var(--mut)}
+.rtext{margin:0 0 20px;color:var(--soft);font-size:17px;line-height:1.6;overflow-wrap:anywhere}
+.go{display:inline-flex;align-items:center;gap:8px;text-decoration:none;font-size:15px;padding:12px 20px;min-height:48px;clear:both}
+.ralso{clear:both;margin-top:24px;padding-top:16px;border-top:1px solid var(--bd);display:flex;flex-direction:column;gap:8px}
+.ralso .lbl{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+.ralso a{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:12px;background:var(--accbg);color:var(--ink);text-decoration:none}
+.ralso a b{font-size:12.5px;color:var(--acc)}.ralso a span{font-size:14px;line-height:1.35;overflow-wrap:anywhere}
+@media (min-width:700px){.thumb{float:right;width:min(42%,340px);max-height:none;margin:4px 0 14px 22px}}
 
 @media (min-width:900px){main{grid-template-columns:repeat(3,minmax(0,1fr))}.card h3{font-size:16.5px}.card p{font-size:14px}.hero h3{font-size:28px}.hero p{font-size:15.5px}}
 @media (max-width:380px){h1{font-size:14px}.bar{gap:6px}.actions .btn{font-size:12.5px;padding:8px 8px}}

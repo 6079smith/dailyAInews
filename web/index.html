@@ -50,6 +50,13 @@
     <button class="btn primary wide" id="saveSrc">Save as my default</button>
   </section>
 </div>
+<div id="reader" class="reader" hidden>
+  <div class="reader-bg" data-close-reader></div>
+  <section class="reader-card" role="dialog" aria-modal="true" aria-labelledby="readerTitle" tabindex="-1">
+    <button class="btn ghost reader-x" data-close-reader aria-label="Close story">✕</button>
+    <div id="readerBody"></div>
+  </section>
+</div>
 <script src="app.js"></script>
 </body>
 </html>

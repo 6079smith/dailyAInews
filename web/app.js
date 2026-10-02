@@ -5,6 +5,7 @@
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   let data, sel = new Set(), cat = "All", q = "", srcF = null;
   let selectionInitialised = false, draftSel = null, lastFocus = null;
+  let openS = null, readerFocus = null, closing = false;
 
   // Read the old array format too, so existing visitors keep their choices.
   const load = () => {
@@ -22,8 +23,27 @@
   const writeSaved = (list) => { try { localStorage.setItem(SAVED, JSON.stringify(list)); } catch {} };
   const saved = new Map(loadSaved().map((x) => [x.id, x]));
   const persist = () => writeSaved([...saved.values()]);
-  const cards = new Map();
+  const cards = new Map();   // lead URL -> story shown on that card
   let mode = "feed", n = 0;
+  // Stories you've opened, by article URL (all sources in the story), so the greyed-out state survives refreshes.
+  // A saved story's readAt is kept in step, so the Saved view's Unread/Read split agrees with the feed.
+  const READ = "dailyAInews.read.v1";
+  const readSet = (() => { try { const a = JSON.parse(localStorage.getItem(READ)); return new Set(Array.isArray(a) ? a : []); } catch { return new Set(); } })();
+  const urlsOf = (s) => [s.lead, ...(s.also || [])].map((a) => a.url);
+  const asStory = (x) => ({ cat: x.cat, lead: x, also: x.also || [] });   // saved copy -> card shape
+  const isRead = (s) => urlsOf(s).some((u) => readSet.has(u) || (saved.get(u) || {}).readAt);
+  function setRead(s, on) {
+    if (!s) return;
+    let changed = false;
+    urlsOf(s).forEach((u) => {
+      readSet.delete(u); if (on) readSet.add(u);
+      const it = saved.get(u);
+      if (it && !!it.readAt !== on) { it.readAt = on ? new Date().toISOString() : null; changed = true; }
+    });
+    try { localStorage.setItem(READ, JSON.stringify([...readSet].slice(-1500))); } catch {}
+    if (changed) { persist(); badge(); }
+    if (mode === "saved") renderSaved(); else $$(".card[data-id]").forEach(syncCard);
+  }
   const save = (intentionalEmpty = false) => {
     try { localStorage.setItem(KEY, JSON.stringify({ ids: [...sel], intentionalEmpty: intentionalEmpty && !sel.size })); } catch {}
   };
@@ -104,30 +124,89 @@
   const shash = (t) => [...t].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 7);
   const initial = (t) => (t.replace(/^The /i, "")[0] || "?").toUpperCase();
   const name = (id) => (data.sources.find((s) => s.id === id) || {}).name || id;
-
   const nm = (x) => x.sourceName || name(x.source);
+  const avatar = (a) => `<span class="av" style="background:hsl(${shash(a.source || nm(a))} 60% 45%)" aria-hidden="true">${esc(initial(nm(a)))}</span>`;
+  const cardOf = (s) => s && $$(".card[data-id]").find((el) => el.dataset.id === s.lead.url);
+
+  // Expanded view: the tapped card grows to fill most of the window; closing it greys the card out as read.
+  const motion = () => !matchMedia("(prefers-reduced-motion:reduce)").matches;
+  const fromRect = (box, el) => {
+    const a = el.getBoundingClientRect(), b = box.getBoundingClientRect();
+    return `translate(${a.left - b.left}px,${a.top - b.top}px) scale(${a.width / b.width},${a.height / b.height})`;
+  };
+  function openReader(el) {
+    const s = cards.get(el.dataset.id), l = s.lead;
+    const img = [l, ...s.also].map((a) => a.image).find((u) => /^https?:\/\//.test(u || ""));
+    // lead's own text, unless it's a short blurb and another outlet in the story has a fuller summary
+    const txt = (a) => a.summary || a.snippet || "";
+    const best = [l, ...s.also].reduce((x, a) => (txt(a).length > txt(x).length ? a : x), l);
+    const from = txt(l).length < 300 && txt(best).length > txt(l).length + 120 ? best : l, text = txt(from);
+    $("#readerBody").innerHTML = `<span class="kick">${esc(s.cat)}</span>
+      <div class="m">${avatar(l)}<span class="who"><span class="sn">${esc(nm(l))}</span><span class="age">${ago(l.published)}</span></span></div>
+      <h2 id="readerTitle">${esc(l.title)}</h2>
+      ${img ? `<figure class="thumb"><img src="${esc(img)}" alt="" referrerpolicy="no-referrer" decoding="async"></figure>` : ""}
+      ${text ? `<p class="rtext">${esc(text)}</p>` : ""}${from !== l ? `<p class="via">Summary from ${esc(nm(from))}</p>` : ""}
+      <a class="btn primary go" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">Read the full article on ${esc(nm(l))} <span aria-hidden="true">↗</span></a>
+      ${s.also.length ? `<div class="ralso"><span class="lbl">Also covered by</span>${s.also.map((a) => `<a href="${esc(a.url)}" target="_blank" rel="noopener noreferrer"><b>${esc(nm(a))}</b>${a.title ? `<span>${esc(a.title)}</span>` : ""}</a>`).join("")}</div>` : ""}`;
+    const im = $("#readerBody img");
+    if (im) im.onerror = () => im.closest("figure").remove();
+    openS = s;
+    readerFocus = el.querySelector("h3 a");
+    closePanels();
+    $("#reader").style.setProperty("--h", hue(s.cat));
+    $("#reader").hidden = false;
+    document.documentElement.classList.add("reading");
+    const box = $(".reader-card");
+    box.scrollTop = 0;
+    if (motion()) {
+      const ease = { duration: 340, easing: "cubic-bezier(.2,.8,.2,1)" };
+      box.animate([{ transform: fromRect(box, el), transformOrigin: "0 0", borderRadius: "20px" }, { transform: "none", transformOrigin: "0 0" }], ease);
+      $("#readerBody").animate([{ opacity: 0 }, { opacity: 0, offset: .45 }, { opacity: 1 }], ease);
+      $(".reader-bg").animate([{ opacity: 0 }, { opacity: 1 }], ease);
+    }
+    box.focus({ preventScroll: true });
+  }
+  function closeReader() {
+    if ($("#reader").hidden || closing) return;
+    const s = openS, el = cardOf(s), box = $(".reader-card");
+    const done = () => {
+      closing = false;
+      $("#reader").hidden = true;
+      document.documentElement.classList.remove("reading");
+      openS = null;
+      if (s) setRead(s, true);
+      const f = el && el.querySelector("h3 a");
+      if (f) f.focus({ preventScroll: true }); else if (readerFocus && document.contains(readerFocus)) readerFocus.focus({ preventScroll: true });
+      readerFocus = null;
+    };
+    const r = el && el.getBoundingClientRect();
+    if (!motion() || !r || r.bottom < 0 || r.top > innerHeight) return done();
+    closing = true;
+    const ease = { duration: 260, easing: "cubic-bezier(.4,0,.2,1)" };
+    $("#readerBody").animate([{ opacity: 1 }, { opacity: 0, offset: .4 }, { opacity: 0 }], ease);
+    $(".reader-bg").animate([{ opacity: 1 }, { opacity: 0 }], ease);
+    box.animate([{ transform: "none", transformOrigin: "0 0" }, { transform: fromRect(box, el), transformOrigin: "0 0", borderRadius: "20px", opacity: .7 }], ease).onfinish = done;
+  }
+
   const BM = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z" stroke-width="2" stroke-linejoin="round"/></svg>';
-  const chip = (id) => `<button class="rd" data-unread="${esc(id)}">✓ Read</button>`;
-  const toSaved = (s) => ({ id: s.lead.url, url: s.lead.url, title: s.lead.title, snippet: s.lead.snippet || "", source: s.lead.source, sourceName: nm(s.lead), cat: s.cat, published: s.lead.published, savedAt: new Date().toISOString(), readAt: null, also: s.also.map((a) => ({ url: a.url, sourceName: nm(a) })) });
+  const toSaved = (s) => ({ id: s.lead.url, url: s.lead.url, title: s.lead.title, snippet: s.lead.snippet || "", summary: s.lead.summary || "", image: s.lead.image || "", source: s.lead.source, sourceName: nm(s.lead), cat: s.cat, published: s.lead.published, savedAt: new Date().toISOString(), readAt: isRead(s) ? new Date().toISOString() : null,
+    also: s.also.map((a) => ({ url: a.url, sourceName: nm(a), title: a.title || "", summary: a.summary || a.snippet || "", image: a.image || "" })) });
   const badge = () => {
-    const u = [...saved.values()].filter((x) => !x.readAt).length;
+    const u = [...saved.values()].filter((x) => !isRead(asStory(x))).length;
     $("#savedCount").textContent = u; $("#savedCount").hidden = !u;
   };
-  // bring one card's bookmark, dim state and "Read" chip in line with the saved map
+  // bring one card's bookmark and greyed-out read state in line with storage
   function syncCard(el) {
     const it = saved.get(el.dataset.id), b = el.querySelector(".bm");
     b.setAttribute("aria-pressed", !!it); b.setAttribute("aria-label", it ? "Remove from saved" : "Save for later");
-    el.classList.toggle("read", !!(it && it.readAt));
-    const c = el.querySelector(".rd");
-    if (c) c.remove();
-    if (it && it.readAt) el.querySelector(".age").insertAdjacentHTML("beforeend", chip(it.url));
+    el.classList.toggle("read", isRead(cards.get(el.dataset.id)));
   }
   const card = (s, hero, sv) => {
-    const l = s.lead, it = saved.get(l.url), fresh = !sv && Date.now() - new Date(l.published) < 3 * 3600 * 1000, read = it && it.readAt;
+    const l = s.lead, it = saved.get(l.url), fresh = !sv && Date.now() - new Date(l.published) < 3 * 3600 * 1000, read = isRead(s);
     cards.set(l.url, s);
     return `<article class="card${hero ? " hero" : ""}${fresh ? " fresh" : ""}${read ? " read" : ""}" data-id="${esc(l.url)}" style="--h:${hue(s.cat)};--i:${Math.min(n++, 10)}">
       ${hero ? `<span class="kick">Top story · ${esc(s.cat)}</span>` : ""}
-      <div class="m"><span class="av" style="background:hsl(${shash(l.source || nm(l))} 60% 45%)" aria-hidden="true">${esc(initial(nm(l)))}</span><span class="who"><span class="sn">${esc(nm(l))}</span><span class="age">${sv ? "saved " + ago(it.savedAt) : ago(l.published)}${read ? chip(l.url) : ""}</span></span></div>${fresh ? '<span class="new">NEW</span>' : ""}
+      <div class="m">${avatar(l)}<span class="who"><span class="sn">${esc(nm(l))}</span><span class="age">${sv ? "saved " + ago(it.savedAt) : ago(l.published)}</span><button class="rd" data-unread aria-label="Read. Mark as unread" title="Mark as unread">✓ Read</button></span></div>${fresh ? '<span class="new">NEW</span>' : ""}
       <button class="bm" data-save="${esc(l.url)}" aria-pressed="${!!it}" aria-label="${it ? "Remove from saved" : "Save for later"}">${BM}</button>
       <h3><a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.title)}</a></h3>
       ${l.snippet ? `<p>${esc(l.snippet)}</p>` : ""}
@@ -138,8 +217,8 @@
   function renderSaved() {
     n = 0; cards.clear();
     const all = [...saved.values()].sort((a, b) => String(b.savedAt).localeCompare(String(a.savedAt)));
-    const unread = all.filter((x) => !x.readAt), read = all.filter((x) => x.readAt);
-    const sect = (t, h, l) => l.length ? `<h2 class="sect" style="--h:${h}">${t} (${l.length})</h2>` + l.map((x) => card({ cat: x.cat, lead: x, also: x.also || [] }, false, true)).join("") : "";
+    const unread = all.filter((x) => !isRead(asStory(x))), read = all.filter((x) => isRead(asStory(x)));
+    const sect = (t, h, l) => l.length ? `<h2 class="sect" style="--h:${h}">${t} (${l.length})</h2>` + l.map((x) => card(asStory(x), false, true)).join("") : "";
     $("#feed").innerHTML = (read.length ? '<div class="tools"><button id="clearRead" class="btn small">Clear read</button></div>' : "") + sect("Unread", 222, unread) + sect("Read", 150, read);
     $("#empty").textContent = "Nothing saved yet. Tap the bookmark on any story.";
     $("#empty").hidden = all.length > 0;
@@ -147,14 +226,6 @@
   }
 
   badge();
-  function markRead(id, on = true) {
-    const it = saved.get(id);
-    if (!it || !!it.readAt === on) return;
-    it.readAt = on ? new Date().toISOString() : null;
-    persist(); badge();
-    if (mode === "saved") renderSaved();
-    else { const el = $$(".card").find((c) => c.dataset.id === id); if (el) syncCard(el); }
-  }
 
   function render() {
     if (srcF && !sel.has(srcF)) srcF = null;
@@ -273,12 +344,14 @@
   document.addEventListener("click", (e) => { if (!e.target.closest(".drops,.panel")) closePanels(); });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
-      if (!$("#sheet").hidden) closeSheet();
+      if (!$("#reader").hidden) closeReader();
+      else if (!$("#sheet").hidden) closeSheet();
       else closePanels();
       return;
     }
-    if (e.key === "Tab" && !$("#sheet").hidden) {
-      const focusable = $$("#sheet button, #sheet input, #sheet a[href]").filter((el) => !el.disabled && el.offsetParent !== null);
+    const trap = !$("#reader").hidden ? "#reader" : !$("#sheet").hidden ? "#sheet" : null;
+    if (e.key === "Tab" && trap) {
+      const focusable = $$(`${trap} button, ${trap} input, ${trap} a[href]`).filter((el) => !el.disabled && el.offsetParent !== null);
       const first = focusable[0], last = focusable.at(-1);
       if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
       else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
@@ -286,8 +359,12 @@
   });
 
   document.addEventListener("click", (e) => {
-    const a = e.target.closest(".card a");
-    if (a) { markRead(a.closest(".card").dataset.id); return; }
+    if (e.target.closest("[data-close-reader]")) { closeReader(); return; }
+    // tapping a story opens the expanded view; ctrl/cmd/shift/middle-click still open the page directly
+    const link = e.target.closest(".card[data-id] h3 a");
+    if (link && !(e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button)) { e.preventDefault(); openReader(link.closest(".card")); return; }
+    const a = e.target.closest(".card a");   // headline (modified click) or an "Also" outlet: opens the page, counts as read
+    if (a) { setRead(cards.get(a.closest(".card").dataset.id), true); return; }
     const t = e.target.closest("[data-save],[data-unread],#openSaved,#clearRead,[data-pick-cat],[data-pick-src],#dropCat,#dropSrc,#manage,[data-close],#refresh,#retry,#openPicker,#selAll,#selNone,#selDefault,#saveSrc");
     if (!t) return;
     if (t.id === "refresh" || t.id === "retry") { loadData(true); return; }
@@ -298,14 +375,14 @@
       persist(); badge(); syncCard(t.closest(".card"));
       if (saved.has(id)) { t.classList.remove("pop"); void t.offsetWidth; t.classList.add("pop"); }
     }
-    else if ("unread" in t.dataset) markRead(t.dataset.unread, false);
+    else if ("unread" in t.dataset) setRead(cards.get(t.closest(".card").dataset.id), false);
     else if (t.id === "openSaved") {
       mode = mode === "feed" ? "saved" : "feed";
       t.setAttribute("aria-pressed", mode === "saved"); t.firstChild.textContent = mode === "saved" ? "← Feed " : "Saved ";
       render(); scrollTo({ top: 0 });
     }
     else if (t.id === "clearRead") {
-      const r = [...saved.values()].filter((x) => x.readAt);
+      const r = [...saved.values()].filter((x) => isRead(asStory(x)));
       if (r.length && confirm(`Remove ${r.length} read ${r.length === 1 ? "story" : "stories"}?`)) { r.forEach((x) => saved.delete(x.id)); persist(); badge(); renderSaved(); }
     }
     else if ("pickCat" in t.dataset) { cat = t.dataset.pickCat; closePanels(); render(); scrollTo({ top: 0 }); }
