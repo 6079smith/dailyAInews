@@ -39,6 +39,7 @@ h1{margin:0;font-size:22px;font-weight:800;letter-spacing:-.02em;background:line
 .btn:active{transform:scale(.96)}
 .btn.primary{background:linear-gradient(135deg,var(--t1),var(--t2));color:var(--onacc);border-color:transparent}
 .btn.ghost{border:0;background:transparent;font-size:18px}
+.btn:focus-visible,.drop:focus-visible,.row:focus-visible,.also a:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 .btn.small{padding:6px 12px;min-height:36px}
 .btn.wide{width:100%;margin-top:12px}
 .btn.icon{width:40px;padding:0;font-size:20px;line-height:1}
@@ -61,7 +62,7 @@ h1{margin:0;font-size:22px;font-weight:800;letter-spacing:-.02em;background:line
 .row .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .row .n{color:var(--mut);font-size:13px}
 .row .ck{width:16px;color:var(--acc);font-weight:700;flex:none}
-.row[aria-selected=true]{background:var(--accbg)}
+.row[aria-pressed=true]{background:var(--accbg)}
 .row.dim{opacity:.5}
 .row.manage{color:var(--acc);font-weight:600;justify-content:center}
 
@@ -114,6 +115,8 @@ main{padding:14px 12px 4px;max-width:960px;margin:0 auto;display:grid;grid-templ
 @keyframes shine{from{background-position:120% 0}to{background-position:-120% 0}}
 .empty,.foot{text-align:center;color:var(--mut);font-size:13px;padding:16px}
 .foot{padding-bottom:28px}
+.load-error{grid-column:1/-1;display:flex;align-items:center;flex-direction:column;gap:10px;text-align:center;padding:36px 16px;color:var(--mut)}
+.load-error strong{color:var(--ink);font-size:17px}
 
 /* source picker sheet */
 .sheet{position:fixed;inset:0;z-index:20}
@@ -133,6 +136,7 @@ main{padding:14px 12px 4px;max-width:960px;margin:0 auto;display:grid;grid-templ
 .nomatch{color:var(--mut);font-size:14px;padding:12px 0}
 
 @media (min-width:900px){main{grid-template-columns:repeat(3,minmax(0,1fr))}.card h3{font-size:16.5px}.card p{font-size:14px}.hero h3{font-size:28px}.hero p{font-size:15.5px}}
+@media (max-width:600px){.sub{max-height:40px;overflow:hidden;transition:max-height .15s,margin .15s,opacity .15s}.scrolled .sub{max-height:0;margin:0;opacity:0}.scrolled .top{padding-top:8px}}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
   .loading .spin{opacity:.5}

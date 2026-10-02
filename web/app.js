@@ -1,14 +1,25 @@
 (() => {
   const KEY = "dailyAInews.sources.v1";
   const $ = (s) => document.querySelector(s);
+  const $$ = (s) => [...document.querySelectorAll(s)];
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   let data, sel = new Set(), cat = "All", q = "", srcF = null;
+  let selectionInitialised = false, draftSel = null, lastFocus = null;
 
-  const load = () => { try { return JSON.parse(localStorage.getItem(KEY)); } catch { return null; } };
+  // Read the old array format too, so existing visitors keep their choices.
+  const load = () => {
+    try {
+      const value = JSON.parse(localStorage.getItem(KEY));
+      if (Array.isArray(value)) return { ids: value, intentionalEmpty: false };
+      return Array.isArray(value && value.ids) ? { ids: value.ids, intentionalEmpty: value.intentionalEmpty === true } : null;
+    } catch { return null; }
+  };
   const SEEN = "dailyAInews.seen.v1";
   const loadSeen = () => { try { const a = JSON.parse(localStorage.getItem(SEEN)); return Array.isArray(a) ? new Set(a) : null; } catch { return null; } };
   const saveSeen = (ids) => { try { localStorage.setItem(SEEN, JSON.stringify(ids)); } catch {} };
-  const save = () => { try { localStorage.setItem(KEY, JSON.stringify([...sel])); } catch {} };
+  const save = (intentionalEmpty = false) => {
+    try { localStorage.setItem(KEY, JSON.stringify({ ids: [...sel], intentionalEmpty: intentionalEmpty && !sel.size })); } catch {}
+  };
 
   const ago = (iso) => {
     const m = Math.max(1, Math.round((Date.now() - new Date(iso)) / 60000));
@@ -27,6 +38,7 @@
     if (busy) return Promise.resolve();
     busy = true;
     document.body.classList.add("loading");
+    $("#feed").setAttribute("aria-busy", "true");
     return fetch("data/news.json?t=" + Date.now(), { cache: "no-store" }).then((r) => {
       if (!r.ok) throw new Error(r.status);
       return r.json();
@@ -34,24 +46,30 @@
       const prev = data && data.generated;
       const prevCount = data ? data.stats.stories : 0;
       data = d;
-      const valid = new Set(d.sources.map((s) => s.id));
-      if (!sel.size) {
+      const valid = new Set(d.sources.filter((s) => s.ok).map((s) => s.id));
+      if (!selectionInitialised) {
         const saved = load();
-        sel = new Set((saved || d.sources.filter((s) => s.default).map((s) => s.id)).filter((id) => valid.has(id)));
-        if (!sel.size) sel = new Set(d.sources.filter((s) => s.default).map((s) => s.id));
+        const preferred = saved && (saved.ids.length || saved.intentionalEmpty) ? saved.ids : d.sources.filter((s) => s.default).map((s) => s.id);
+        sel = new Set(preferred.filter((id) => valid.has(id)));
+        selectionInitialised = true;
       } else sel = new Set([...sel].filter((id) => valid.has(id)));
       // a source you added since your last visit switches itself on once
       const seen = loadSeen();
-      if (seen) { d.sources.filter((x) => x.custom && !seen.has(x.id)).forEach((x) => sel.add(x.id)); save(); }
+      const newCustom = seen ? d.sources.filter((x) => x.custom && x.ok && !seen.has(x.id)) : [];
+      if (newCustom.length) { newCustom.forEach((x) => sel.add(x.id)); save(); }
       saveSeen(d.sources.map((x) => x.id));
       render();
       if (!manual) setUpdated();
       else if (prev === d.generated) setUpdated("already the latest");
       else setUpdated(Math.max(0, d.stats.stories - prevCount) + " new");
     }).catch(() => {
-      if (!data) $("#updated").textContent = "Couldn't load news";
+      if (!data) {
+        $("#updated").textContent = "Couldn't load news";
+        $("#feed").innerHTML = '<section class="load-error" role="alert"><strong>News could not be loaded.</strong><span>Check your connection, then try again.</span><button id="retry" class="btn primary">Try again</button></section>';
+        $("#foot").textContent = "";
+      }
       else setUpdated("refresh failed, check connection");
-    }).finally(() => { busy = false; document.body.classList.remove("loading"); });
+    }).finally(() => { busy = false; document.body.classList.remove("loading"); $("#feed").setAttribute("aria-busy", "false"); });
   }
   loadData(false);
 
@@ -91,7 +109,7 @@
 
     // Category dropdown: counts reflect the current source filter
     $("#panelCat").innerHTML = [["All", all.length], ...data.categories.filter((c) => counts[c]).map((c) => [c, counts[c]])].map(([c, n]) =>
-      `<button class="row" role="option" aria-selected="${c === cat}" data-pick-cat="${esc(c)}"><span class="ck">${c === cat ? "✓" : ""}</span><span class="t">${esc(c)}</span><span class="n">${n}</span></button>`).join("");
+      `<button class="row" aria-pressed="${c === cat}" data-pick-cat="${esc(c)}"><span class="ck">${c === cat ? "✓" : ""}</span><span class="t">${esc(c)}</span><span class="n">${n}</span></button>`).join("");
 
     // Source dropdown: counts reflect the current category
     const sc = {};
@@ -102,8 +120,8 @@
     const total = Object.values(sc).length ? view(null).filter((s) => cat === "All" || s.cat === cat).length : 0;
     const mine = data.sources.filter((x) => sel.has(x.id)).sort((x, y) => (sc[y.id] || 0) - (sc[x.id] || 0) || x.name.localeCompare(y.name));
     $("#panelSrc").innerHTML =
-      `<button class="row" role="option" aria-selected="${!srcF}" data-pick-src=""><span class="ck">${!srcF ? "✓" : ""}</span><span class="t">All my sources</span><span class="n">${total}</span></button>` +
-      mine.map((x) => `<button class="row ${sc[x.id] ? "" : "dim"}" role="option" aria-selected="${srcF === x.id}" data-pick-src="${esc(x.id)}"><span class="ck">${srcF === x.id ? "✓" : ""}</span><span class="t">${esc(x.name)}</span><span class="n">${sc[x.id] || 0}</span></button>`).join("") +
+      `<button class="row" aria-pressed="${!srcF}" data-pick-src=""><span class="ck">${!srcF ? "✓" : ""}</span><span class="t">All my sources</span><span class="n">${total}</span></button>` +
+      mine.map((x) => `<button class="row ${sc[x.id] ? "" : "dim"}" aria-pressed="${srcF === x.id}" data-pick-src="${esc(x.id)}"><span class="ck">${srcF === x.id ? "✓" : ""}</span><span class="t">${esc(x.name)}</span><span class="n">${sc[x.id] || 0}</span></button>`).join("") +
       `<button class="row manage" id="manage">Add or remove sources…</button>`;
 
     const shown = cat === "All" ? all : all.filter((s) => s.cat === cat);
@@ -128,9 +146,10 @@
       }
     } else html = shown.map((s) => card(s)).join("");
     $("#feed").innerHTML = html;
+    $("#empty").textContent = "No stories match these filters. Try another category or source.";
     $("#empty").hidden = shown.length > 0;
     const st = data.stats;
-    $("#foot").textContent = `${st.stories} stories · ${st.paywalled_dropped} paywalled items excluded · last ${data.window_hours}h`;
+    $("#foot").textContent = `Showing ${shown.length} ${shown.length === 1 ? "story" : "stories"} from ${sel.size} ${sel.size === 1 ? "source" : "sources"} · ${st.stories} stories considered · ${st.paywalled_dropped} paywalled items excluded · last ${data.window_hours}h`;
   }
 
   function renderPicker() {
@@ -142,7 +161,7 @@
     const order = Object.keys(groups).sort((a, b) => (a === "Custom") - (b === "Custom") || a.localeCompare(b));
     $("#srcList").innerHTML = list.length ? order.map((t) =>
       `<div class="srcgrp">${esc(t)}</div>` + groups[t].map((s) =>
-        `<label class="src ${s.ok ? "" : "off"}"><input type="checkbox" value="${esc(s.id)}" ${sel.has(s.id) ? "checked" : ""}><span>${esc(s.name)}</span><em>${s.ok ? s.items + (s.items === 1 ? " item" : " items") : "unavailable"}</em></label>`).join("")).join("")
+        `<label class="src ${s.ok ? "" : "off"}"><input type="checkbox" value="${esc(s.id)}" ${draftSel.has(s.id) ? "checked" : ""} ${s.ok ? "" : "disabled"}><span>${esc(s.name)}</span><em>${s.ok ? s.items + (s.items === 1 ? " item" : " items") : "unavailable"}</em></label>`).join("")).join("")
       : `<p class="nomatch">No match in the catalog for “${esc(q)}”.</p>`;
     const term = q.trim();
     const add = $("#addNew");
@@ -153,7 +172,23 @@
         "&body=" + encodeURIComponent("Created from the dashboard. Just press “Submit new issue”. An automatic job will find the feed, check it is free to read, and add it (or list matches to choose with /add 1).");
     }
   }
-  const setAll = (ids) => { sel = new Set(ids); renderPicker(); render(); save(); };
+  const setPicker = (ids) => { draftSel = new Set(ids); renderPicker(); };
+
+  function openSheet() {
+    lastFocus = document.activeElement;
+    draftSel = new Set(sel);
+    q = "";
+    $("#srcSearch").value = "";
+    renderPicker();
+    $("#sheet").hidden = false;
+    $("#srcSearch").focus();
+  }
+  function closeSheet() {
+    $("#sheet").hidden = true;
+    draftSel = null;
+    if (lastFocus && document.contains(lastFocus)) lastFocus.focus();
+    lastFocus = null;
+  }
 
   // pointer glow + gentle tilt on desktop (not touch, not reduced-motion)
   const fine = matchMedia("(hover:hover) and (pointer:fine)").matches && !matchMedia("(prefers-reduced-motion:reduce)").matches;
@@ -185,30 +220,44 @@
     if (open) { $("#panel" + k).hidden = false; $("#drop" + k).setAttribute("aria-expanded", "true"); }
   }
   document.addEventListener("click", (e) => { if (!e.target.closest(".drops,.panel")) closePanels(); });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closePanels(); });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      if (!$("#sheet").hidden) closeSheet();
+      else closePanels();
+      return;
+    }
+    if (e.key === "Tab" && !$("#sheet").hidden) {
+      const focusable = $$("#sheet button, #sheet input, #sheet a[href]").filter((el) => !el.disabled && el.offsetParent !== null);
+      const first = focusable[0], last = focusable.at(-1);
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  });
 
   document.addEventListener("click", (e) => {
-    const t = e.target.closest("[data-pick-cat],[data-pick-src],#dropCat,#dropSrc,#manage,[data-close],#refresh,#openPicker,#selAll,#selNone,#selDefault,#saveSrc");
+    const t = e.target.closest("[data-pick-cat],[data-pick-src],#dropCat,#dropSrc,#manage,[data-close],#refresh,#retry,#openPicker,#selAll,#selNone,#selDefault,#saveSrc");
     if (!t) return;
-    if (t.id === "refresh") { loadData(true); return; }
+    if (t.id === "refresh" || t.id === "retry") { loadData(true); return; }
     if (!data) return;
     if ("pickCat" in t.dataset) { cat = t.dataset.pickCat; closePanels(); render(); scrollTo({ top: 0 }); }
     else if ("pickSrc" in t.dataset) { srcF = t.dataset.pickSrc || null; closePanels(); render(); scrollTo({ top: 0 }); }
     else if (t.id === "dropCat" || t.id === "dropSrc") togglePanel(t.id === "dropCat" ? "Cat" : "Src");
-    else if (t.id === "manage") { closePanels(); q = ""; $("#srcSearch").value = ""; renderPicker(); $("#sheet").hidden = false; }
-    else if (t.id === "openPicker") { q = ""; $("#srcSearch").value = ""; renderPicker(); $("#sheet").hidden = false; }
-    else if ("close" in t.dataset || t.id === "saveSrc") { if (t.id === "saveSrc") save(); $("#sheet").hidden = true; }
-    else if (t.id === "selAll") setAll(data.sources.map((s) => s.id));
-    else if (t.id === "selNone") setAll([]);
-    else if (t.id === "selDefault") setAll(data.sources.filter((s) => s.default).map((s) => s.id));
+    else if (t.id === "manage") { closePanels(); openSheet(); }
+    else if (t.id === "openPicker") openSheet();
+    else if ("close" in t.dataset) closeSheet();
+    else if (t.id === "saveSrc") { sel = new Set(draftSel); save(true); render(); closeSheet(); }
+    else if (t.id === "selAll") setPicker(data.sources.filter((s) => s.ok).map((s) => s.id));
+    else if (t.id === "selNone") setPicker([]);
+    else if (t.id === "selDefault") setPicker(data.sources.filter((s) => s.default && s.ok).map((s) => s.id));
   });
   document.addEventListener("input", (e) => {
     if (e.target.id === "srcSearch" && data) { q = e.target.value; renderPicker(); }
   });
   document.addEventListener("change", (e) => {
     if (e.target.matches("#srcList input")) {
-      e.target.checked ? sel.add(e.target.value) : sel.delete(e.target.value);
-      save(); render();
+      e.target.checked ? draftSel.add(e.target.value) : draftSel.delete(e.target.value);
     }
   });
+
+  document.addEventListener("scroll", () => document.body.classList.toggle("scrolled", scrollY > 24), { passive: true });
 })();
