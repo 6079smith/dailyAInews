@@ -9,7 +9,7 @@ Phone-friendly dashboard (+ optional email digest) of the latest tech news, with
 - **Source picker.** Tap *Sources* to choose outlets; the choice is saved on your device and becomes your default.
 - **Add your own source.** In *Sources*, type a name or website. It filters the built-in catalog; if it isn't there, tap **Add “…” as a new source**. That opens a pre-filled GitHub issue (just press *Submit new issue*). A workflow (`add-source.yml`) then finds the feed, checks it is readable, recent and free of paywalls, and either adds it (new sources are on by default) or lists matches for you to choose by replying `/add 2`. Only issues/comments from the repo owner are acted on.
 - **Read later.** Tap the bookmark on any story to save it on this device; open *Saved* to see unread and read stories, and clear read ones.
-- **Auto-refresh.** A GitHub Action rebuilds it every hour.
+- **Auto-refresh (paused).** The hourly rebuild (`schedule` in `.github/workflows/update.yml`) and the in-app reload after 20 minutes away (`AUTO_RELOAD` in `web/app.js`) are switched off for now. The site still rebuilds on every merge to `main` or from *Actions → Update AI news → Run workflow*, and the ↻ button still reloads the latest data. The daily 06:00 email only goes out from the hourly run, so it is paused too.
 
 ## Setup
 1. Repo **Settings → Pages → Source: GitHub Actions** (a private repo needs a plan that supports Pages).
