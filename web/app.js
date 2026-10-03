@@ -250,8 +250,9 @@
     $("#srcCount").textContent = sel.size;
     $("#catLabel").textContent = cat;
     $("#srcLabel").textContent = srcF ? name(srcF) : "All (" + sel.size + ")";
-    $(".drops").hidden = $(".desks").hidden = $(".orders").hidden = mode === "saved";
-    $$(".ord").forEach((b) => b.setAttribute("aria-pressed", b.dataset.order === order));
+    $(".drops").hidden = $(".desks").hidden = $("#order").hidden = mode === "saved";
+    $("#orderLabel").textContent = order === "latest" ? "Latest" : "Category";
+    $("#order").setAttribute("aria-label", order === "latest" ? "List order: latest first. Switch to by category" : "List order: by category. Switch to latest first");
     document.body.dataset.desk = mode === "saved" ? "" : desk;
     $$(".desk").forEach((b) => {
       b.setAttribute("aria-pressed", b.dataset.desk === desk);
@@ -388,13 +389,12 @@
     if (link && !(e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button)) { e.preventDefault(); openReader(link.closest(".card")); return; }
     const a = e.target.closest(".card a");   // headline (modified click) or an "Also" outlet: opens the page, counts as read
     if (a) { setRead(cards.get(a.closest(".card").dataset.id), true); return; }
-    const t = e.target.closest(".desk,[data-save],[data-unread],#openSaved,#clearRead,[data-pick-cat],[data-pick-src],#dropCat,#dropSrc,#manage,.ord,[data-close],#refresh,#retry,#openPicker,#selAll,#selNone,#selDefault,#saveSrc");
+    const t = e.target.closest(".desk,[data-save],[data-unread],#openSaved,#clearRead,[data-pick-cat],[data-pick-src],#dropCat,#dropSrc,#manage,#order,[data-close],#refresh,#retry,#openPicker,#selAll,#selNone,#selDefault,#saveSrc");
     if (!t) return;
     if (t.id === "refresh" || t.id === "retry") { loadData(true); return; }
     if (!data) return;
-    if (t.classList.contains("ord")) {
-      if (t.dataset.order === order) return;
-      order = t.dataset.order;
+    if (t.id === "order") {
+      order = order === "latest" ? "category" : "latest";
       try { localStorage.setItem(ORDER, order); } catch {}
       render(); scrollTo({ top: 0 });
     }
