@@ -17,7 +17,7 @@
       <button id="openPicker" class="btn" aria-label="Choose sources">Sources <span id="srcCount" class="pill"></span></button>
     </div>
   </div>
-  <div class="sub"><span class="dot" aria-hidden="true"></span><span id="updated">Loading…</span></div>
+  <div class="sub"><span class="dot" aria-hidden="true"></span><span id="updated">Loading…</span><button id="order" class="btn small" aria-label="List order: by category. Switch to latest first" title="Switch between by category and latest first">List by: <b id="orderLabel">Category</b></button></div>
   <div class="drops">
     <div class="desks" role="group" aria-label="Choose a desk">
       <button class="desk" data-desk="ai" aria-pressed="true">AI <span class="n"></span></button>
@@ -25,11 +25,6 @@
     </div>
     <button id="dropCat" class="drop" aria-expanded="false" aria-controls="panelCat"><span class="dl">Category</span><b id="catLabel">All</b><i aria-hidden="true">▾</i></button>
     <button id="dropSrc" class="drop" aria-expanded="false" aria-controls="panelSrc"><span class="dl">Source</span><b id="srcLabel">All</b><i aria-hidden="true">▾</i></button>
-  </div>
-  <div class="orders" role="group" aria-label="Order stories">
-    <span class="ol">List by</span>
-    <button class="ord" data-order="category" aria-pressed="true">Category</button>
-    <button class="ord" data-order="latest" aria-pressed="false">Latest</button>
   </div>
   <div id="panelCat" class="panel" role="group" aria-label="Filter by category" hidden></div>
   <div id="panelSrc" class="panel" role="group" aria-label="Filter by source" hidden></div>
