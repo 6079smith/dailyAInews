@@ -4,13 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="light dark">
-<title>Daily AI News</title>
+<title>Daily Tech News</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header class="top">
   <div class="bar">
-    <h1>Daily AI News</h1>
+    <h1>Daily Tech News</h1>
     <div class="actions">
       <button id="refresh" class="btn icon" aria-label="Refresh news" title="Refresh"><span class="spin">↻</span></button>
       <button id="openSaved" class="btn" aria-pressed="false">Saved <span id="savedCount" class="pill" hidden></span></button>
@@ -18,6 +18,10 @@
     </div>
   </div>
   <div class="sub"><span class="dot" aria-hidden="true"></span><span id="updated">Loading…</span></div>
+  <div class="desks" role="group" aria-label="Choose a desk">
+    <button class="desk" data-desk="ai" aria-pressed="true">AI <span class="n"></span></button>
+    <button class="desk" data-desk="tech" aria-pressed="false">Tech <span class="n"></span></button>
+  </div>
   <div class="drops">
     <button id="dropCat" class="drop" aria-expanded="false" aria-controls="panelCat"><span class="dl">Category</span><b id="catLabel">All</b><i aria-hidden="true">▾</i></button>
     <button id="dropSrc" class="drop" aria-expanded="false" aria-controls="panelSrc"><span class="dl">Source</span><b id="srcLabel">All</b><i aria-hidden="true">▾</i></button>

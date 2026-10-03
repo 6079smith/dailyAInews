@@ -1,7 +1,8 @@
-# Daily AI News
+# Daily Tech News
 
-Phone-friendly dashboard (+ optional email digest) of the latest AI / AGI / ASI news.
+Phone-friendly dashboard (+ optional email digest) of the latest tech news, with AI (AI / AGI / ASI) kept on its own desk.
 
+- **Two desks: AI and Tech.** A switch under the header flips between AI news and everything else in tech (phones, computing, security, space, gaming, EVs…), each with its own top story and categories. AI-only feeds go to the AI desk; stories from general tech feeds go to the AI desk when they're clearly about AI, otherwise to Tech. The app remembers your last desk, and the email digest has a section for each.
 - **Free to read only.** Only free sources are configured (`sources.json`); known paywalled domains are blocked, and every article page is checked for paywall markers (`isAccessibleForFree: false`, "subscribe to continue", etc.) before it's shown.
 - **Categorised & de-duplicated.** Stories about the same subject are clustered; each cluster shows the most relevant article (one per source, never several from the same outlet) plus "Also: …" links to other sources.
 - **Tap to expand.** Tapping a story opens it full-size in place, with a longer summary, a thumbnail when the feed or article has one, the link to the full article and the other outlets covering it. Close it and the card greys out as read (remembered on this device); tap its *Read ✓* chip to mark it unread. Ctrl/⌘-click still opens the article directly.

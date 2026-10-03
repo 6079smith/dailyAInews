@@ -33,11 +33,42 @@ CASES = [
  # nothing recognisable -> Other
  ("Weekend reading list", "A few links.", "Other"),
 ]
+# Tech desk categories: (title, snippet, expected)
+TECH_CASES = [
+ ("Apple unveils iPhone 18 with a bigger battery", "The new phone gets a brighter screen.", "Phones & Gadgets"),
+ ("Samsung Galaxy Watch 8 review: the best Android smartwatch", "Battery life finally lasts two days.", "Phones & Gadgets"),
+ ("Windows 12 update brings a redesigned Start menu", "Microsoft is rolling out the software to PCs.", "Computing & Software"),
+ ("Hackers steal customer data in retailer breach", "Ransomware gang claims the cyber attack.", "Security & Privacy"),
+ ("EU fines Apple over App Store rules in antitrust case", "Regulators said the company broke the law.", "Business & Policy"),
+ ("SpaceX launches Starship on sixth test flight", "The rocket reached orbit.", "Science & Space"),
+ ("Nintendo sets a date for its next games console", "Three new games launch alongside it.", "Gaming & Entertainment"),
+ ("Tesla cuts prices of its electric cars in Europe", "EV competition heats up.", "Cars & Energy"),
+ ("Weekend reading list", "A few links.", "Other"),
+]
+# Which desk an article from a general (not AI-only) feed lands on: (title, summary, expected)
+DESK_CASES = [
+ ("OpenAI launches a new ChatGPT voice mode", "", "ai"),
+ ("Apple unveils iPhone 18", "The phone has a faster chip.", "tech"),
+ ("Nvidia's new GeForce card is a gaming beast", "Ray tracing performance doubles.", "tech"),
+ ("Samsung's new fridge", "It uses AI to track food and an LLM to suggest recipes.", "ai"),
+ ("Robot vacuum review", "It maps your home.", "tech"),
+]
 bad = 0
+for title, snip, want in TECH_CASES:
+    got = f.categorise(title, snip, "tech")
+    ok = got == want
+    bad += not ok
+    print(("PASS" if ok else "FAIL"), f"tech {want!r:24}", "" if ok else f"got {got!r}", "|", title[:60])
+for title, snip, want in DESK_CASES:
+    got = f.article_desk(title, snip, False)
+    ok = got == want
+    bad += not ok
+    print(("PASS" if ok else "FAIL"), f"desk {want!r:24}", "" if ok else f"got {got!r}", "|", title[:60])
 for title, snip, want in CASES:
     got = f.categorise(title, snip)
     ok = got == want
     bad += not ok
     print(("PASS" if ok else "FAIL"), f"{want!r:28}", "" if ok else f"got {got!r}", "|", title[:60])
-print(f"\n{len(CASES) - bad}/{len(CASES)} passed")
+total = len(CASES) + len(TECH_CASES) + len(DESK_CASES)
+print(f"\n{total - bad}/{total} passed")
 sys.exit(1 if bad else 0)

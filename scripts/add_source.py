@@ -256,7 +256,7 @@ def render_candidates(query, res):
     lines = [f"Here's what I found for **{query}** (all verified readable and free of paywalls):", ""]
     for i, c in enumerate(res["ok"], 1):
         lines.append(f"{i}. **{c['name']}**: {c.get('site') or c['feed']}  \n   feed `{c['feed']}`, {c['items']} recent articles, "
-                     f"newest {c['newest'] or 'unknown'}, {'AI-focused' if c['ai_only'] else 'general tech (AI articles are filtered in)'}")
+                     f"newest {c['newest'] or 'unknown'}, {'AI-focused (AI desk)' if c['ai_only'] else 'general tech (AI stories go to the AI desk, the rest to Tech)'}")
     lines += ["", "Reply with `/add 1` (or the number you want) and I'll add it."]
     if res["rejected"]:
         lines += ["", "<details><summary>Skipped</summary>", ""]

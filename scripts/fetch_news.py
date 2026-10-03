@@ -34,6 +34,24 @@ AI_TERMS = [
     r"\bagents?\b", r"transformer", r"diffusion", r"deepseek", r"robot", r"alignment",
 ]
 AI_RE = re.compile("|".join(AI_TERMS), re.I)
+# Stricter set for deciding the desk of an article from a general feed: leaves out words that are just as
+# common in ordinary tech stories (a GeForce card, a robot vacuum, "agents" of a company...).
+WEAK_AI = {r"nvidia", r"robot", r"\bagents?\b", r"transformer", r"diffusion", r"alignment", r"neural", r"generative"}
+AI_DESK_RE = re.compile("|".join(t for t in AI_TERMS if t not in WEAK_AI), re.I)
+# "Is this a tech story at all?" -- only applied to general-news feeds marked topic_check (e.g. BBC Tech,
+# which also carries some non-tech items).
+TECH_TERMS = [
+    r"\btech\w*", r"\bapps?\b", r"\bsoftware\b", r"\b(smart)?phones?\b", r"\biphone", r"\bandroid\b", r"\bapple\b",
+    r"\bgoogle\b", r"\bmicrosoft\b", r"\bamazon\b", r"\bmeta\b", r"\bsamsung\b", r"\bcomputers?\b", r"\blaptops?\b",
+    r"\bpcs?\b", r"\bchips?\b", r"\binternet\b", r"\bonline\b", r"\bcyber\w*", r"\bhack\w*", r"\bdata\b", r"\bdigital\b",
+    r"\bspace\b", r"\brockets?\b", r"\bnasa\b", r"\bspacex\b", r"\bsatellites?\b", r"\belectric (car|vehicle)s?\b", r"\bevs?\b",
+    r"\btesla\b", r"\bbatter(y|ies)\b", r"\bgam(e|es|ing|ers?)\b", r"\bconsoles?\b", r"\bplaystation\b", r"\bxbox\b",
+    r"\bnintendo\b", r"\bstreaming\b", r"\bnetflix\b", r"\bsocial media\b", r"\btiktok\b", r"\binstagram\b", r"\bcrypto\w*",
+    r"\bbitcoin\b", r"\bstartups?\b", r"\bbroadband\b", r"\b5g\b", r"\bquantum\b", r"\bgadgets?\b", r"\bwearables?\b",
+    r"\bsmartwatch\w*", r"\bheadsets?\b", r"\bprivacy\b", r"\bencrypt\w*", r"\boutages?\b", r"\bwebsites?\b", r"\bdevices?\b",
+    r"\bonline safety\b", r"\bsemiconductors?\b", r"\bscam\w*", r"\bpasswords?\b", r"\bbreach\w*",
+]
+TECH_RE = re.compile("|".join(TECH_TERMS), re.I)
 
 # Category rules: (whole-word regex, weight).  A pattern scores weight x 2 if it appears in a headline and
 # weight x 1 if it appears only in the snippet; the highest-scoring category wins (ties: earlier in the list).
@@ -78,8 +96,38 @@ CATEGORIES = [
         (r"\bartists?\b|\bcreators?\b|\bmusic\b|\bfilms?\b|\bhollywood\b|\bwriters?\b|\bauthors?\b|\bcompanions?\b|\brelationships?\b", 2),
         (r"\bculture\b|\bsociety\b|\bkids?\b|\bchildren\b|\bteens?\b|\bpeople\b|\bhumans?\b", 1)]),
 ]
+# Categories for the Tech desk (everything that isn't about AI), same rule format.
+TECH_CATEGORIES = [
+    ("Phones & Gadgets", [
+        (r"\b(smart)?phones?\b|\biphone\w*|\bipad\w*|\bpixel\b|\bgalaxy\b|\bsmartwatch\w*|\bwearables?\b|\bearbuds\b|\bairpods\b", 3),
+        (r"\bgadgets?\b|\bheadphones?\b|\bcameras?\b|\btablets?\b|\bfoldables?\b|\bvr\b|\bheadsets?\b|\bvision pro\b|\bhands[- ]on\b|\breview\b", 2),
+        (r"\bapple\b|\bsamsung\b|\bandroid\b|\bios\b|\bwatch\b|\bdevices?\b", 1)]),
+    ("Computing & Software", [
+        (r"\bwindows\b|\bmacos\b|\blinux\b|\blaptops?\b|\bpcs?\b|\bcpus?\b|\bgpus?\b|\bprocessors?\b|\bsemiconductors?\b|\bchips?\b", 3),
+        (r"\bsoftware\b|\bupdates?\b|\bbrowsers?\b|\bopen[- ]source\b|\bdevelopers?\b|\bprogramming\b|\bcloud\b|\bservers?\b|\bquantum\b", 2),
+        (r"\bapps?\b|\bmicrosoft\b|\bintel\b|\bamd\b|\bnvidia\b|\bstorage\b|\bmonitors?\b|\bkeyboards?\b", 1)]),
+    ("Security & Privacy", [
+        (r"\bhack\w*|\bbreach\w*|\bransomware\b|\bmalware\b|\bvulnerabilit\w*|\bexploit\w*|\bzero[- ]day\b|\bcyber\w*|\bphishing\b", 3),
+        (r"\bprivacy\b|\bsecurity\b|\bscam\w*|\bspyware\b|\bpasswords?\b|\bencrypt\w*|\bsurveillance\b|\bleak\w*|\bpatch\w*", 2)]),
+    ("Business & Policy", [
+        (r"\bantitrust\b|\bregulat\w*|\blawsuits?\b|\bcourt\b|\bjudge\b|\bfines?d?\b|\bbans?\b|\btariffs?\b|\bftc\b|\bdoj\b|\bEU\b", 3),
+        (r"\bacqui(re|res|red|sition)\b|\bmerger\b|\blayoffs?\b|\bearnings\b|\brevenue\b|\bipo\b|\braises?\b|\bfunding\b|\bvaluation\b", 3),
+        (r"\bstartups?\b|\bceo\b|\bstock\b|\bshares\b|\bdeal\b|\bprices?\b|\bsubscriptions?\b|\bgovernment\b|\blaw\b", 1)]),
+    ("Science & Space", [
+        (r"\bspace\w*|\brockets?\b|\bnasa\b|\bspacex\b|\bstarship\b|\bsatellites?\b|\borbit\w*|\bmoon\b|\bmars\b|\btelescope\b|\bastronaut\w*", 3),
+        (r"\bscien\w*|\bresearch\w*|\bstud(y|ies)\b|\bphysics\b|\bclimate\b|\bfusion\b|\bdiscover\w*", 2)]),
+    ("Gaming & Entertainment", [
+        (r"\bgam(e|es|ing|ers?)\b|\bconsoles?\b|\bplaystation\b|\bps5\b|\bxbox\b|\bnintendo\b|\bswitch 2\b|\bsteam\b|\besports\b", 3),
+        (r"\bstreaming\b|\bnetflix\b|\bspotify\b|\byoutube\b|\btv\b|\bfilms?\b|\bmovies?\b|\bmusic\b|\bdisney\b|\btiktok\b|\bsocial media\b", 2)]),
+    ("Cars & Energy", [
+        (r"\belectric (cars?|vehicles?|trucks?)\b|\bevs?\b|\btesla\b|\brivian\b|\bbyd\b|\bself[- ]driving\b|\brobotaxi\w*|\bwaymo\b", 3),
+        (r"\bbatter(y|ies)\b|\bcharging\b|\bsolar\b|\bgrid\b|\benergy\b|\bcars?\b|\bvehicles?\b|\bdrones?\b|\be-?bikes?\b", 2)]),
+]
 CAT_RULES = [(n, [(re.compile(p, re.I), w) for p, w in rules]) for n, rules in CATEGORIES]
+TECH_RULES = [(n, [(re.compile(p, re.I), w) for p, w in rules]) for n, rules in TECH_CATEGORIES]
+DESK_CATEGORIES = {"ai": [n for n, _ in CATEGORIES], "tech": [n for n, _ in TECH_CATEGORIES]}
 DEFAULT_CAT = "Other"
+MAX_PER_DESK = 60   # story clusters kept per desk, so news.json stays small
 MIN_SCORE = 3
 
 STOP = set("""a an the of to in on for and or with by at from as is are was were be been it its this that
@@ -310,19 +358,28 @@ def similar(a, b):
     return jac >= 0.34 or (ovl >= 0.6 and inter >= 3)
 
 
-def categorise(titles, body=""):
-    """Pick the best category from headline text and snippet text (see CATEGORIES)."""
+def categorise(titles, body="", desk="ai"):
+    """Pick the best category from headline text and snippet text (CATEGORIES, or TECH_CATEGORIES for desk "tech")."""
     best, best_n = DEFAULT_CAT, MIN_SCORE - 1
-    for name, rules in CAT_RULES:
+    for name, rules in (TECH_RULES if desk == "tech" else CAT_RULES):
         n = sum(w * (2 * bool(rx.search(titles)) + bool(rx.search(body))) for rx, w in rules)
         if n > best_n:
             best, best_n = name, n
     return best
 
 
+def article_desk(title, summary, ai_only):
+    """"ai" for AI-only feeds, or when a general feed's story is clearly about AI; otherwise "tech"."""
+    if ai_only:
+        return "ai"
+    return "ai" if AI_DESK_RE.search(title) or len(AI_DESK_RE.findall(summary)) >= 2 else "tech"
+
+
 def score_article(a, now):
-    title_hits = len(AI_RE.findall(a["title"]))
-    sum_hits = len(AI_RE.findall(a["snippet"]))
+    # relevance to its own desk: AI terms for AI stories, tech terms for the rest
+    rx = TECH_RE if a.get("desk") == "tech" else AI_RE
+    title_hits = len(rx.findall(a["title"]))
+    sum_hits = len(rx.findall(a["snippet"]))
     age_h = max(0.0, (now - a["_dt"]).total_seconds() / 3600)
     recency = math.exp(-age_h / 30)
     richness = min(len(a["snippet"]), 230) / 230
@@ -361,12 +418,15 @@ def build(args):
             dt = it["published"] or now
             if now - dt > window or dt > now + timedelta(hours=2):
                 continue
-            text = f'{it["title"]} {strip_html(it["summary"])}'
-            if not src["ai_only"] and not AI_RE.search(text):
-                continue
+            plain = strip_html(it["summary"])
+            text = f'{it["title"]} {plain}'
             if src["ai_only"] and sid == "hn" and not AI_RE.search(text):
                 continue
+            desk = article_desk(it["title"], plain, src["ai_only"])
+            if desk == "tech" and src.get("topic_check") and not TECH_RE.search(text):
+                continue   # general news feed: skip items that aren't about tech at all
             candidates.append({
+                "desk": desk,
                 "source": sid, "title": it["title"], "url": it["url"].split("#")[0],
                 "snippet": snippet(it["summary"]), "summary": snippet(it["body"], 1000), "image": it["image"], "published": dt.isoformat(), "_dt": dt,
                 "_w": src["weight"],
@@ -416,9 +476,12 @@ def build(args):
             best_per_source.setdefault(a["source"], a)
         arts = list(best_per_source.values())
         lead = arts[0]
-        cat = categorise(" | ".join(a["title"] for a in arts[:3]), " ".join(a["snippet"] for a in arts[:3]))
+        n_ai = sum(a["desk"] == "ai" for a in arts)
+        desk = "ai" if n_ai * 2 >= len(arts) else "tech"   # majority of its articles; a tie goes to AI
+        cat = categorise(" | ".join(a["title"] for a in arts[:3]), " ".join(a["snippet"] for a in arts[:3]), desk)
         out.append({
             "id": f"c{i}",
+            "desk": desk,
             "category": cat,
             "score": round(lead["score"] + 0.6 * (len(arts) - 1), 3),
             "articles": [{
@@ -430,16 +493,25 @@ def build(args):
             } for a in arts],
         })
     out.sort(key=lambda c: c["score"], reverse=True)
+    kept, per_desk = [], {}
+    for c in out:
+        per_desk[c["desk"]] = per_desk.get(c["desk"], 0) + 1
+        if per_desk[c["desk"]] <= MAX_PER_DESK:
+            kept.append(c)
+    out = kept
 
     data = {
         "generated": now.isoformat(),
         "repo": os.environ.get("GITHUB_REPOSITORY", "6079smith/dailyAInews"),
         "window_hours": args.hours,
-        "sources": [{"id": s["id"], "name": s["name"], "type": s["type"],
+        "sources": [{"id": s["id"], "name": s["name"], "type": s["type"], "desk": "ai" if s["ai_only"] else "mixed",
                      "default": s["id"] in cfg["default_sources"], "custom": bool(s.get("custom")), "site": s.get("site", ""),
                      "items": status[s["id"]]["items"], "ok": status[s["id"]]["ok"]} for s in cfg["sources"]],
-        "categories": [n for n, _ in CATEGORIES] + [DEFAULT_CAT],
-        "stats": {"fetched": len(candidates), "paywalled_dropped": dropped, "stories": len(out)},
+        # flat list kept for pages still running an older app.js; desk_categories is what the app uses now
+        "categories": DESK_CATEGORIES["ai"] + DESK_CATEGORIES["tech"] + [DEFAULT_CAT],
+        "desk_categories": {d: names + [DEFAULT_CAT] for d, names in DESK_CATEGORIES.items()},
+        "stats": {"fetched": len(candidates), "paywalled_dropped": dropped, "stories": len(out),
+                  "desks": {d: sum(c["desk"] == d for c in out) for d in DESK_CATEGORIES}},
         "stories": out,
     }
     dest = ROOT / "site" / "data"
