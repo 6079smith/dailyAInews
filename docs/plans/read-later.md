@@ -1,104 +1,105 @@
-# Implementation brief: "Read later" (saved stories)
+# Implementation brief: Read later (saved stories)
 
-You are implementing a **Read later** feature in the `dailyAInews` repo. Read this whole brief first, then the files it references. The product decisions below are final, so don't change them.
+This brief describes how **Read later** works today, so you can change it safely. Read all of it before you edit anything, then read the code it points to. Read later is already built and live; this is not a plan for a new feature. If you're asked for a change, keep everything below working unless the request says otherwise.
 
-## Context
-
-- The repo is a static GitHub Pages dashboard of AI news. A GitHub Action runs `scripts/fetch_news.py` every hour, which writes `site/data/news.json`. The front end is plain HTML/CSS/JS with no framework and no build step:
+## The app in brief
+- **Daily Tech News**, a static GitHub Pages dashboard. Every hour a GitHub Action (`.github/workflows/update.yml`, "Update AI news") runs `scripts/fetch_news.py`, which writes `site/data/news.json`.
+- The front end is plain HTML/CSS/JS with no framework and no build step:
   - `web/index.html`
-  - `web/app.js`: a single IIFE (~260 lines)
+  - `web/app.js`: one IIFE
   - `web/style.css`
-- User preferences are stored in `localStorage` on each device. Follow the existing pattern in `web/app.js`:
-  - keys are named `dailyAInews.<name>.v1`;
-  - every read and write is wrapped in try/catch (see `loadSeen` / `saveSeen` near the top of the file).
-- `news.json` stories have the shape `{ category, articles: [{ url, title, snippet, source, published, score }] }`. `view()` turns each story into `{ cat, rank, lead, also }`. `name(id)` maps a source id to its display name.
-- Cards are built in `render()` → `card(s, hero)`. **The whole card is tappable** through a stretched link: `.card h3 a::after { position:absolute; inset:0; z-index:1 }`. Anything clickable inside a card must sit above that layer with `position:relative; z-index:2`, the way `.also` does.
-- All click handling goes through one delegated `document.addEventListener("click", …)` that matches on `closest(...)`. Extend it rather than adding listeners per element.
+- **Two desks.** A switch (`.desk` buttons, `desk` variable, stored in `dailyAInews.desk.v1`) flips the feed between **AI** and **Tech**. Each story in `news.json` has `desk: "ai" | "tech"`; `deskOf()` treats a missing value as `"ai"`.
+- **Tapping a card** opens the **expanded view** (`openReader()`). Closing it (`closeReader()`) marks the story read. Ctrl/⌘-click opens the article directly.
+- `news.json` story shape:
 
-> **Note (added later):** this has been built, then merged with the tap-to-expand view. There is now a single read state: opening a story's expanded view and closing it marks it read (`dailyAInews.read.v1`, by article URL), and a saved story's `readAt` is kept in step with it via `setRead()` / `isRead()` in `web/app.js`. Headline taps open the expanded view instead of navigating; "Also" links still navigate and count as read.
+  ```
+  { desk, category, articles: [{ url, title, snippet, summary?, image?, source, published, score }] }
+  ```
 
-## Decisions (final)
+  `view()` turns each story into the card shape `{ cat, desk, lead, also }`. `name(id)` gives a source's display name. `nm(x)` gives `x.sourceName`, falling back to `name(x.source)`.
 
-| Topic | Decision |
+## What the user sees
+- **Bookmark:** every card has a bookmark button at its top right (`.bm`). Tapping it saves or unsaves the story, with a small "pop" animation. It never opens the story.
+- **Saved button:** the header's **Saved** button (`#openSaved`) shows how many saved stories are unread (`#savedCount`, hidden at 0). Tapping it switches to the **Saved view**, and the button then reads **← Feed**.
+- **Saved view:**
+  - The desk switch and dropdowns (`.drops`) are hidden.
+  - Saved stories from **both desks** appear in **Unread (n)** and **Read (n)** sections, newest save first.
+  - Each card shows "saved 2h ago" and an **AI**/**Tech** chip (`.dk`).
+  - A **Clear read** button asks for confirmation, then removes saved stories that have been read.
+  - When nothing is saved: "Nothing saved yet. Tap the bookmark on any story." The footer reads "N saved · M unread".
+- **Read state is shared by the whole app, not just Saved:**
+  - Closing the expanded view marks a story read, and so does opening one of its **Also** links.
+  - A read card is greyed out (`.card.read`: grayscale and dimmed) and shows a **✓ Read** chip (`.rd`, `data-unread`). Tapping the chip marks the story unread.
+  - Read cards can still be opened.
+  - The feed and the Saved view always agree about what is read.
+
+## Storage (`localStorage`, this device only)
+All keys follow `dailyAInews.<name>.v1`, and every read and write is wrapped in try/catch. A corrupt value must never break the page.
+
+| Key | Contents |
 |---|---|
-| Storage | This device only, in `localStorage`. No backend and no sync. |
-| How to save | A bookmark icon button on every card. |
-| Where the list lives | A **Saved** button in the header that switches between the Feed and Saved views. |
-| After reading | Mark the story as read and keep it (dimmed). Provide a **Clear read** action. |
+| `dailyAInews.saved.v1` | JSON array of saved stories (below). `loadSaved()` drops any entry without a string `id` and `url`, and treats anything that isn't an array as `[]`. |
+| `dailyAInews.read.v1` | JSON array of **article URLs** that have been read. Every article URL in a story is stored, so the read state survives a change of lead source. The list is trimmed to the last 1500. |
+| `dailyAInews.desk.v1` | `"ai"` or `"tech"`. |
 
-Out of scope: syncing across devices, swipe or long-press gestures, expiry, email-digest integration, export/import.
+A saved story is a **full copy**, because stories drop out of `news.json` after 48 hours:
 
-## Spec
+```
+{ id, url, title, snippet, summary, image, source, sourceName, cat, desk, published, savedAt, readAt,
+  also: [{ url, sourceName, title, summary, image }] }
+```
+- `id` is the lead article's URL.
+- `savedAt` and `readAt` are ISO strings; `readAt` is `null` while unread.
+- Saved copies made before the desks or the expanded view existed may lack `desk`, `summary`, `image` or the `also[].title` field. Always fall back: `deskOf()`, `|| ""`, and so on.
 
-### 1. Storage (`web/app.js`)
-- New key: `dailyAInews.saved.v1`. Its value is a JSON array of saved stories:
-  `{ id, url, title, snippet, source, sourceName, cat, published, savedAt, readAt, also: [{ url, sourceName }] }`
-  - `id` is the main (lead) article's URL.
-  - `savedAt` and `readAt` are ISO strings. `readAt` is `null` until the story is opened.
-- Store a **full copy** of each story, not just a reference. Stories drop out of `news.json` after the time window, and the saved list must still render on its own.
-- Add helpers `loadSaved()` and `writeSaved(list)` that follow the existing try/catch pattern. If the stored value is corrupt or not an array, treat it as empty (`[]`).
-- Keep an in-memory `Map` keyed by `id` for fast lookups during rendering.
+## Code map (`web/app.js`)
+| What | Where |
+|---|---|
+| State | `saved` (a Map keyed by `id`), `persist()`, `cards` (a Map from lead URL to the story on that card, rebuilt on every render), `mode` (`"feed"` or `"saved"`) |
+| Read state | `readSet`, `urlsOf(s)`, `isRead(s)` (true if **any** article URL is in `readSet` **or** a saved copy has `readAt`), `setRead(s, on)` (updates `readSet` **and** every matching saved copy's `readAt`, then re-renders the Saved view or calls `syncCard` on every card) |
+| Saved copy → card | `asStory(x)` and `toSaved(s)`. `toSaved` copies `readAt` from `isRead(s)` at save time. |
+| Cards | `card(s, hero, sv)`. `sv=true` gives the Saved-view variant (saved time and desk chip, no NEW badge, never a hero card). Every card has `data-id` = lead URL. |
+| Updating one card in place | `syncCard(el)` sets the bookmark's `aria-pressed` and label, and toggles `.read`. Use it rather than a full re-render, so the scroll position is kept. |
+| Badge | `badge()` counts saved stories where `!isRead(asStory(x))`. |
+| Saved view | `renderSaved()`, which `render()` calls when `mode === "saved"` |
+| Clicks | One delegated `document` click listener. Order: close the expanded view → open a card's headline (expand) → any other `.card a` (mark read) → `closest(".desk,[data-save],[data-unread],#openSaved,#clearRead,…")`. Extend this listener; don't add listeners per element. **Don't** match a bare `[data-desk]`, because `<body>` carries `data-desk`. |
 
-### 2. Bookmark button on cards
-- In `card()`, add the following inside the card:
-  `<button class="bm" data-save="${esc(l.url)}" aria-pressed="${isSaved}" aria-label="${isSaved ? "Remove from saved" : "Save for later"}">`
-  Use an inline SVG bookmark: outlined when unsaved, filled when saved.
-- Put it at the top right of the card. The `.new` badge currently sits at `top:12px; right:12px`, so move it left far enough to clear the bookmark.
-- `.bm` must have `position:relative; z-index:2` (or be absolutely positioned with `z-index:2`) so that tapping it **doesn't** open the article.
-- Make the tap target at least 40×40px. Show a visible `:focus-visible` outline that matches the existing `.btn:focus-visible` style.
-- Tapping it saves or unsaves the story. Update **only that button** (`aria-pressed`, label, icon) and the header badge. Don't re-render the whole feed, so the scroll position stays put.
-- Add a short scale "pop" animation on save. The existing `prefers-reduced-motion` rule already turns animations off.
+## Rules to keep
+1. Anything clickable inside a card must sit above the stretched headline link (`.card h3 a::after` has `z-index:1`). Give it `position:relative` or `absolute` and `z-index:2`, as `.bm`, `.rd` and `.also` do.
+2. Pass **every** value interpolated into HTML through `esc()`. Saved data comes from third-party feeds.
+3. Don't call `preventDefault` on real links, except the headline-to-expand case that already exists.
+4. Change the read state only through `setRead()`, so the feed, the Saved view and the badge stay in step.
+5. Keep the expanded view, the focus traps (expanded view and source sheet), Esc handling, the desk switch and the dropdowns working.
+6. Use vanilla JS in the existing terse style (arrow helpers, template strings), with no libraries. Use the existing CSS variables (`--acc`, `--mut`, `--bd`, `--accbg`, …) and don't hard-code colours. The result must work in light and dark mode, and at 360px wide with no horizontal scroll.
 
-### 3. Saved button in the header (`web/index.html`)
-- Add `<button id="openSaved" class="btn" aria-pressed="false">Saved <span id="savedCount" class="pill"></span></button>` inside `.actions`, between Refresh and Sources.
-- `#savedCount` shows the number of **unread** saved stories and is hidden when that number is 0.
-- Add a `mode` variable (`"feed"` or `"saved"`). Clicking the button toggles it and updates `aria-pressed`. In Saved mode the button text reads `← Feed`.
-- **Saved view** (a new `renderSaved()` function that `render()` calls when `mode === "saved"`):
-  - Hide `.drops` and any open panels.
-  - Render the cards from the saved copies, newest `savedAt` first, in two sections using the existing `.sect` heading style: **Unread (n)** and **Read (n)**. Leave out an empty section.
-  - Reuse the `card()` markup. Add a flag so the meta row shows "saved 2d ago" (use the existing `ago()`) and so no "Top story" hero card appears.
-  - At the top, a **Clear read** button (`.btn small`). It asks `confirm("Remove N read stories?")`, then removes every item that has a `readAt`. Hide it when nothing has been read.
-  - Empty state: reuse `#empty` with the text "Nothing saved yet. Tap the bookmark on any story."
-  - Footer text: `"N saved · M unread"`.
-- `loadData()` must not throw you out of Saved mode. After a refresh, re-render whichever view is active.
-- Scroll to the top when switching views.
-
-### 4. Mark read, keep
-- In the delegated click handler, when the user clicks an `a` inside a `.card` (the headline or an "Also" link), look up the card's saved id. Add a `data-id` on the `<article>` to make this easy. If the story is saved and `readAt` is null, set `readAt = now`, save, and update the badge. Don't `preventDefault`, so the link still opens in a new tab.
-- This applies in **both** views.
-- Read cards get the `.read` class: `opacity:.6`. Add a small "✓ Read" chip in the meta row.
-  - The chip is a `<button data-unread="id">`. Tapping it sets `readAt = null` (z-index 2, as above).
-- In the main feed, cards for saved stories show the filled bookmark. A saved story that has been read also gets `.read`.
-
-### 5. README
-Add one bullet to the feature list in `README.md`:
-"**Read later.** Tap the bookmark on any story to save it on this device; open *Saved* to see unread and read stories, and clear read ones."
-
-## Constraints
-- Use vanilla JS only, matching the existing terse style (arrow helpers, template strings, `esc()` on **every** interpolated value). Don't add libraries.
-- Escape all stored fields with `esc()` when rendering. The saved data comes from third-party feeds.
-- It must work at phone width (360px) without horizontal scrolling, and in both light and dark colour schemes. Use the existing CSS variables (`--acc`, `--mut`, `--bd`, etc.) and don't hard-code colours.
-- Keep the existing behaviour of the sources sheet, the dropdowns, Escape handling and the focus trap unchanged.
-- Expected size is roughly 80–100 lines of JS, about 15 lines of CSS and about 2 lines of HTML.
+## Out of scope unless asked
+Sync across devices, swipe or long-press gestures, expiry of saved stories, saved stories in the email digest, export/import.
 
 ## How to verify
-1. Build fixture data offline and serve it:
+1. Build the offline fixtures and serve them:
    ```
    python3 tests/make_fixtures.py
    python3 scripts/fetch_news.py --fixtures tests/fixtures
    cp web/* site/
    python3 -m http.server -d site 8000
    ```
-2. Run a Playwright script with Chromium at `/opt/pw-browsers/chromium` (don't run `playwright install`) at a 390×844 viewport and check that:
-   - tapping a bookmark fills it, the badge shows 1, and **no new tab/page opens**;
-   - the story still shows as saved after a reload;
-   - **Saved** lists it under Unread, and **← Feed** goes back;
-   - clicking the headline in the Saved view moves it to Read, dims it and lowers the badge to 0;
-   - "✓ Read" puts it back in Unread;
+2. Run Playwright with Chromium at `/opt/pw-browsers/chromium` (don't run `playwright install`). Test at 390×844 and 1280×800, in light and dark mode. Headless frames are slow, so wait at least 1.5 s after anything animated. Check that:
+   - the bookmark fills, the badge shows 1, and neither the expanded view nor a new tab opens;
+   - the story is still saved after a reload;
+   - **Saved** lists it under Unread with its desk chip, and **← Feed** goes back;
+   - opening it in the Saved view and closing it moves it to Read, greys it and drops the badge to 0;
+   - **✓ Read** moves it back to Unread;
+   - reading a story in the feed also greys it in Saved, and the other way round;
    - **Clear read** removes read items after you accept the confirm dialog;
-   - a corrupt `localStorage["dailyAInews.saved.v1"] = "x"` doesn't break the page;
-   - screenshots in light and dark mode show no overlap between the bookmark and the NEW badge.
-3. Run the existing tests: `python3 tests/test_add_source.py` and `python3 tests/test_categories.py`.
+   - a Tech-desk story can be saved, and shows the **Tech** chip;
+   - setting `localStorage["dailyAInews.saved.v1"] = "x"` and `localStorage["dailyAInews.read.v1"] = "{bad"` doesn't break the page;
+   - there are no page errors and no horizontal scroll.
+3. Run `python3 tests/test_add_source.py` and `python3 tests/test_categories.py`.
 
 ## Delivery
-Commit on the current feature branch with a clear message, for example "Add Read later: bookmark stories, Saved view, mark read". Push. Don't open a PR unless asked.
+Follow `CLAUDE.md`:
+1. Commit on the working branch and push.
+2. Open a PR into `main` and merge it once it's green.
+3. Confirm that the "Update AI news" workflow run succeeded.
+
+Don't include model names in commits or PR text.
