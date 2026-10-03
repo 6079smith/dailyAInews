@@ -105,9 +105,11 @@
   }
   loadData(false);
 
-  // Re-check when you come back to the tab/app after a while
+  // Re-check when you come back to the tab/app after a while. Paused: set AUTO_RELOAD = true to resume.
+  const AUTO_RELOAD = false;
   let hiddenAt = 0;
   document.addEventListener("visibilitychange", () => {
+    if (!AUTO_RELOAD) return;
     if (document.hidden) hiddenAt = Date.now();
     else if (data && hiddenAt && Date.now() - hiddenAt > 20 * 60 * 1000) loadData(true);
   });
