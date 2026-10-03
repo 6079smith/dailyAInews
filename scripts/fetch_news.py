@@ -6,6 +6,7 @@ categorise.  Writes site/data/news.json.  Standard library only.
     python3 scripts/fetch_news.py --fixtures tests/fixtures   # offline test
 """
 import argparse, html, json, math, os, re, sys, time
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
@@ -317,24 +318,25 @@ PAYWALL_MARKERS = re.compile(
 
 
 def check_article(url, blocked, fixtures):
-    """Return (ok, meta_description, og_image). ok False => paywalled/unreadable."""
+    """Return (ok, meta_description, og_image, why). ok False => paywalled/unreadable; why says what caught it."""
     if is_blocked(url, blocked):
-        return False, "", ""
+        return False, "", "", "blocked domain"
     if fixtures:
-        return True, "", ""
+        return True, "", "", ""
     try:
         status, body, cs = http_get(url, timeout=15, max_bytes=300_000)
     except Exception as e:
         code = getattr(e, "code", None)
         if code in (401, 402):
-            return False, "", ""
-        return True, "", ""   # source is vetted-free; can't verify (bot block / timeout) -> keep
+            return False, "", "", f"HTTP {code}"
+        return True, "", "", ""   # source is vetted-free; can't verify (bot block / timeout) -> keep
     page = decode(body, cs)
-    if PAYWALL_MARKERS.search(page):
-        return False, "", ""
+    pw = PAYWALL_MARKERS.search(page)
+    if pw:
+        return False, "", "", "marker " + repr(pw.group(0)[:40])
     m = re.search(r'<meta[^>]+(?:property="og:description"|name="description")[^>]+content="([^"]*)"', page, re.I)
     im = re.search(r'<meta[^>]+(?:property="og:image"|name="twitter:image")[^>]+content="([^"]*)"', page, re.I)
-    return True, html.unescape(m.group(1)) if m else "", web_url(urljoin(url, html.unescape(im.group(1)))) if im else ""
+    return True, html.unescape(m.group(1)) if m else "", web_url(urljoin(url, html.unescape(im.group(1)))) if im else "", ""
 
 
 # ---- scoring / clustering ---------------------------------------------------
@@ -442,16 +444,22 @@ def build(args):
 
     # paywall check, concurrent
     def chk(a):
-        ok, desc, img = check_article(a["url"], blocked, fixtures)
+        ok, desc, img, why = check_article(a["url"], blocked, fixtures)
         a["image"] = a["image"] or img
+        a["_why"] = why
         return a, ok, desc
     with ThreadPoolExecutor(12) as ex:
         checked = list(ex.map(chk, candidates))
     free = []
     dropped = 0
+    drop_log = {}   # source -> {"checked": n, "reasons": Counter, "example": url}, printed below for diagnosis
     for a, ok, desc in checked:
+        d = drop_log.setdefault(a["source"], {"checked": 0, "reasons": Counter(), "example": ""})
+        d["checked"] += 1
         if not ok:
             dropped += 1
+            d["reasons"][a["_why"]] += 1
+            d["example"] = d["example"] or a["url"]
             continue
         if len(a["snippet"]) < 70 and desc:
             a["snippet"] = snippet(desc)
@@ -521,6 +529,12 @@ def build(args):
     print(f"stories={len(out)} candidates={len(candidates)} paywall_dropped={dropped}")
     for f in failed:
         print("  feed failed ->", f, file=sys.stderr)
+    # which sources lose articles to the paywall check, and what caught them (for spotting false positives)
+    for sid, d in sorted(drop_log.items(), key=lambda kv: -sum(kv[1]["reasons"].values())):
+        n = sum(d["reasons"].values())
+        if n:
+            why = ", ".join(f"{r} x{c}" for r, c in d["reasons"].most_common())
+            print(f"  paywall-dropped {sid}: {n}/{d['checked']} ({why}) e.g. {d['example']}")
     return data
 
 
