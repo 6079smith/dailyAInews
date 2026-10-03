@@ -63,6 +63,10 @@ body[data-desk=tech]{--t1:#0f766e;--t2:#2563eb;--t3:#0891b2}
 @media (prefers-color-scheme:dark){body[data-desk=tech]{--t1:#5eead4;--t2:#7dd3fc;--t3:#a5b4fc}}
 
 /* dropdowns */
+.orders{display:flex;align-items:center;gap:6px;padding:0 0 10px;font-size:12px;color:var(--mut)}
+.ord{font:inherit;font-size:13px;font-weight:600;color:var(--mut);background:var(--glass2);border:1px solid var(--bd);border-radius:999px;padding:0 14px;min-height:36px;cursor:pointer}
+.ord[aria-pressed=true]{background:linear-gradient(135deg,var(--t1),var(--t2));color:var(--onacc);border-color:transparent}
+.ord:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 .drops{display:flex;gap:6px;padding:0 0 10px;align-items:stretch}
 .drop{flex:1;min-width:0;display:flex;align-items:center;gap:6px;text-align:left;font:inherit;font-size:14px;border:1px solid var(--bd);background:var(--glass1);color:var(--ink);border-radius:12px;padding:8px 12px;min-height:44px;cursor:pointer;transition:border-color .15s,box-shadow .15s}
 .drop .dl{color:var(--mut);font-size:12px;flex:none}

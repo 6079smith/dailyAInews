@@ -28,6 +28,9 @@
   // Two desks: AI news, and everything else in tech. The last one you looked at is remembered.
   const DESK = "dailyAInews.desk.v1", DESK_NAME = { ai: "AI", tech: "Tech" };
   let desk = (() => { try { return localStorage.getItem(DESK) === "tech" ? "tech" : "ai"; } catch { return "ai"; } })();
+  // How stories are listed: grouped by category (default) or one flat list, newest first. Remembered.
+  const ORDER = "dailyAInews.order.v1";
+  let order = (() => { try { return localStorage.getItem(ORDER) === "latest" ? "latest" : "category"; } catch { return "category"; } })();
   const deskOf = (st) => (st.desk === "tech" ? "tech" : "ai");   // stories from before the split are AI
   // Stories you've opened, by article URL (all sources in the story), so the greyed-out state survives refreshes.
   // A saved story's readAt is kept in step, so the Saved view's Unread/Read split agrees with the feed.
@@ -247,7 +250,8 @@
     $("#srcCount").textContent = sel.size;
     $("#catLabel").textContent = cat;
     $("#srcLabel").textContent = srcF ? name(srcF) : "All (" + sel.size + ")";
-    $(".drops").hidden = $(".desks").hidden = mode === "saved";
+    $(".drops").hidden = $(".desks").hidden = $(".orders").hidden = mode === "saved";
+    $$(".ord").forEach((b) => b.setAttribute("aria-pressed", b.dataset.order === order));
     document.body.dataset.desk = mode === "saved" ? "" : desk;
     $$(".desk").forEach((b) => {
       b.setAttribute("aria-pressed", b.dataset.desk === desk);
@@ -275,7 +279,9 @@
 
     const shown = cat === "All" ? all : all.filter((s) => s.cat === cat);
     let html = "";
-    if (cat === "All") {
+    if (order === "latest") {
+      html = shown.slice().sort((a, b) => new Date(b.lead.published) - new Date(a.lead.published)).map((s) => card(s)).join("");
+    } else if (cat === "All") {
       const [top, ...rest] = shown;
       if (top) html += card(top, true);
       for (const c of deskCats()) {
@@ -382,11 +388,17 @@
     if (link && !(e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button)) { e.preventDefault(); openReader(link.closest(".card")); return; }
     const a = e.target.closest(".card a");   // headline (modified click) or an "Also" outlet: opens the page, counts as read
     if (a) { setRead(cards.get(a.closest(".card").dataset.id), true); return; }
-    const t = e.target.closest(".desk,[data-save],[data-unread],#openSaved,#clearRead,[data-pick-cat],[data-pick-src],#dropCat,#dropSrc,#manage,[data-close],#refresh,#retry,#openPicker,#selAll,#selNone,#selDefault,#saveSrc");
+    const t = e.target.closest(".desk,[data-save],[data-unread],#openSaved,#clearRead,[data-pick-cat],[data-pick-src],#dropCat,#dropSrc,#manage,.ord,[data-close],#refresh,#retry,#openPicker,#selAll,#selNone,#selDefault,#saveSrc");
     if (!t) return;
     if (t.id === "refresh" || t.id === "retry") { loadData(true); return; }
     if (!data) return;
-    if (t.classList.contains("desk")) {
+    if (t.classList.contains("ord")) {
+      if (t.dataset.order === order) return;
+      order = t.dataset.order;
+      try { localStorage.setItem(ORDER, order); } catch {}
+      render(); scrollTo({ top: 0 });
+    }
+    else if (t.classList.contains("desk")) {
       if (t.dataset.desk === desk) return;
       desk = t.dataset.desk;
       try { localStorage.setItem(DESK, desk); } catch {}
