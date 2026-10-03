@@ -51,9 +51,10 @@ h1{margin:0;font-size:22px;font-weight:800;letter-spacing:-.02em;background:line
 @keyframes rot{to{transform:rotate(360deg)}}
 
 /* desk switch: AI | Tech */
-.desks{display:flex;gap:4px;padding:3px;margin:0 0 8px;border:1px solid var(--bd);border-radius:14px;background:var(--glass2)}
-.desk{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;font:inherit;font-size:15px;font-weight:700;color:var(--mut);background:none;border:0;border-radius:11px;min-height:40px;cursor:pointer;transition:background .2s,color .2s}
-.desk .n{font-size:12px;font-weight:600;opacity:.8}
+/* one row: [AI | Tech] [Category] [Source] */
+.desks{flex:none;display:flex;gap:2px;padding:2px;border:1px solid var(--bd);border-radius:12px;background:var(--glass2)}
+.desk{display:flex;align-items:center;justify-content:center;gap:4px;font:inherit;font-size:13.5px;font-weight:700;color:var(--mut);background:none;border:0;border-radius:10px;padding:0 9px;min-height:38px;cursor:pointer;transition:background .2s,color .2s}
+.desk .n{font-size:11px;font-weight:600;opacity:.8}
 .desk[aria-pressed=true]{background:linear-gradient(135deg,var(--t1),var(--t2));color:var(--onacc);box-shadow:0 6px 18px -8px var(--t2)}
 .desk:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 .dk{display:inline-block;margin-left:6px;padding:0 6px;border-radius:999px;background:var(--accbg);color:var(--acc);font-size:10.5px;font-weight:700}
@@ -62,9 +63,14 @@ body[data-desk=tech]{--t1:#0f766e;--t2:#2563eb;--t3:#0891b2}
 @media (prefers-color-scheme:dark){body[data-desk=tech]{--t1:#5eead4;--t2:#7dd3fc;--t3:#a5b4fc}}
 
 /* dropdowns */
-.drops{display:flex;gap:8px;padding:0 0 10px}
+.drops{display:flex;gap:6px;padding:0 0 10px;align-items:stretch}
 .drop{flex:1;min-width:0;display:flex;align-items:center;gap:6px;text-align:left;font:inherit;font-size:14px;border:1px solid var(--bd);background:var(--glass1);color:var(--ink);border-radius:12px;padding:8px 12px;min-height:44px;cursor:pointer;transition:border-color .15s,box-shadow .15s}
 .drop .dl{color:var(--mut);font-size:12px;flex:none}
+/* compact dropdowns: small label above the value, so all four controls fit one phone-width row */
+.drop{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:4px;padding:3px 10px;min-height:44px;line-height:1.15}
+.drop .dl{grid-column:1;font-size:10.5px}
+.drop b{grid-column:1;grid-row:2;font-size:13.5px}
+.drop i{grid-column:2;grid-row:1/3;align-self:center}
 .drop b{font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .drop i{font-style:normal;color:var(--mut);transition:transform .15s}
 .drop[aria-expanded=true]{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
