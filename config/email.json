@@ -1,7 +1,10 @@
 {
-  "subject": "Daily AI News",
+  "subject": "Daily Tech News",
   "sources": "default",
-  "max_stories": 12,
+  "max_stories": {
+    "ai": 8,
+    "tech": 8
+  },
   "max_per_category": 3,
   "site_url": ""
 }

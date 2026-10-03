@@ -25,12 +25,16 @@
   const persist = () => writeSaved([...saved.values()]);
   const cards = new Map();   // lead URL -> story shown on that card
   let mode = "feed", n = 0;
+  // Two desks: AI news, and everything else in tech. The last one you looked at is remembered.
+  const DESK = "dailyAInews.desk.v1", DESK_NAME = { ai: "AI", tech: "Tech" };
+  let desk = (() => { try { return localStorage.getItem(DESK) === "tech" ? "tech" : "ai"; } catch { return "ai"; } })();
+  const deskOf = (st) => (st.desk === "tech" ? "tech" : "ai");   // stories from before the split are AI
   // Stories you've opened, by article URL (all sources in the story), so the greyed-out state survives refreshes.
   // A saved story's readAt is kept in step, so the Saved view's Unread/Read split agrees with the feed.
   const READ = "dailyAInews.read.v1";
   const readSet = (() => { try { const a = JSON.parse(localStorage.getItem(READ)); return new Set(Array.isArray(a) ? a : []); } catch { return new Set(); } })();
   const urlsOf = (s) => [s.lead, ...(s.also || [])].map((a) => a.url);
-  const asStory = (x) => ({ cat: x.cat, lead: x, also: x.also || [] });   // saved copy -> card shape
+  const asStory = (x) => ({ cat: x.cat, desk: x.desk, lead: x, also: x.also || [] });   // saved copy -> card shape
   const isRead = (s) => urlsOf(s).some((u) => readSet.has(u) || (saved.get(u) || {}).readAt);
   function setRead(s, on) {
     if (!s) return;
@@ -109,17 +113,20 @@
   });
 
   // Pick best article among selected sources; others (one per source) become "Also covered by".
-  function view(only) {
+  function view(only, d = desk) {
     const out = [];
     for (const s of data.stories) {
+      if (deskOf(s) !== d) continue;
       const arts = s.articles.filter((a) => sel.has(a.source) && (!only || a.source === only)).sort((a, b) => b.score - a.score);
       if (!arts.length) continue;
-      out.push({ cat: s.category, rank: arts[0].score + 0.6 * (arts.length - 1), lead: arts[0], also: arts.slice(1) });
+      out.push({ cat: s.category, desk: deskOf(s), rank: arts[0].score + 0.6 * (arts.length - 1), lead: arts[0], also: arts.slice(1) });
     }
     return out.sort((a, b) => b.rank - a.rank);
   }
 
-  const HUES = { "AGI & Superintelligence": 280, "Safety & Policy": 8, "Chips & Infrastructure": 188, "Business & Funding": 150, "Models & Releases": 222, Research: 38, "Products & Tools": 330, "Society & Work": 95 };
+  const HUES = { "AGI & Superintelligence": 280, "Safety & Policy": 8, "Chips & Infrastructure": 188, "Business & Funding": 150, "Models & Releases": 222, Research: 38, "Products & Tools": 330, "Society & Work": 95,
+    "Phones & Gadgets": 200, "Computing & Software": 230, "Security & Privacy": 0, "Business & Policy": 140, "Science & Space": 265, "Gaming & Entertainment": 310, "Cars & Energy": 100 };
+  const deskCats = () => (data.desk_categories && data.desk_categories[desk]) || data.categories;
   const hue = (c) => HUES[c] ?? 220;
   const shash = (t) => [...t].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 7);
   const initial = (t) => (t.replace(/^The /i, "")[0] || "?").toUpperCase();
@@ -191,7 +198,7 @@
   }
 
   const BM = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z" stroke-width="2" stroke-linejoin="round"/></svg>';
-  const toSaved = (s) => ({ id: s.lead.url, url: s.lead.url, title: s.lead.title, snippet: s.lead.snippet || "", summary: s.lead.summary || "", image: s.lead.image || "", source: s.lead.source, sourceName: nm(s.lead), cat: s.cat, published: s.lead.published, savedAt: new Date().toISOString(), readAt: isRead(s) ? new Date().toISOString() : null,
+  const toSaved = (s) => ({ id: s.lead.url, url: s.lead.url, title: s.lead.title, snippet: s.lead.snippet || "", summary: s.lead.summary || "", image: s.lead.image || "", source: s.lead.source, sourceName: nm(s.lead), cat: s.cat, desk: s.desk || "ai", published: s.lead.published, savedAt: new Date().toISOString(), readAt: isRead(s) ? new Date().toISOString() : null,
     also: s.also.map((a) => ({ url: a.url, sourceName: nm(a), title: a.title || "", summary: a.summary || a.snippet || "", image: a.image || "" })) });
   const badge = () => {
     const u = [...saved.values()].filter((x) => !isRead(asStory(x))).length;
@@ -208,7 +215,7 @@
     cards.set(l.url, s);
     return `<article class="card${hero ? " hero" : ""}${fresh ? " fresh" : ""}${read ? " read" : ""}" data-id="${esc(l.url)}" style="--h:${hue(s.cat)};--i:${Math.min(n++, 10)}">
       ${hero ? `<span class="kick">Top story · ${esc(s.cat)}</span>` : ""}
-      <div class="m">${avatar(l)}<span class="who"><span class="sn">${esc(nm(l))}</span><span class="age">${sv ? "saved " + ago(it.savedAt) : ago(l.published)}</span><button class="rd" data-unread aria-label="Read. Mark as unread" title="Mark as unread">✓ Read</button></span></div>${fresh ? '<span class="new">NEW</span>' : ""}
+      <div class="m">${avatar(l)}<span class="who"><span class="sn">${esc(nm(l))}</span><span class="age">${sv ? "saved " + ago(it.savedAt) : ago(l.published)}${sv ? `<span class="dk">${DESK_NAME[deskOf(s)]}</span>` : ""}${fresh ? '<span class="new">NEW</span>' : ""}</span><button class="rd" data-unread aria-label="Read. Mark as unread" title="Mark as unread">✓ Read</button></span></div>
       <button class="bm" data-save="${esc(l.url)}" aria-pressed="${!!it}" aria-label="${it ? "Remove from saved" : "Save for later"}">${BM}</button>
       <h3><a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.title)}</a></h3>
       ${l.snippet ? `<p>${esc(l.snippet)}</p>` : ""}
@@ -238,18 +245,23 @@
     $("#srcCount").textContent = sel.size;
     $("#catLabel").textContent = cat;
     $("#srcLabel").textContent = srcF ? name(srcF) : "All (" + sel.size + ")";
-    $(".drops").hidden = mode === "saved";
+    $(".drops").hidden = $(".desks").hidden = mode === "saved";
+    document.body.dataset.desk = mode === "saved" ? "" : desk;
+    $$(".desk").forEach((b) => {
+      b.setAttribute("aria-pressed", b.dataset.desk === desk);
+      b.querySelector(".n").textContent = view(srcF, b.dataset.desk).length;
+    });
     if (mode === "saved") { closePanels(); return renderSaved(); }
     n = 0; cards.clear();
 
     // Category dropdown: counts reflect the current source filter
-    $("#panelCat").innerHTML = [["All", all.length], ...data.categories.filter((c) => counts[c]).map((c) => [c, counts[c]])].map(([c, n]) =>
+    $("#panelCat").innerHTML = [["All", all.length], ...deskCats().filter((c) => counts[c]).map((c) => [c, counts[c]])].map(([c, n]) =>
       `<button class="row" aria-pressed="${c === cat}" data-pick-cat="${esc(c)}"><span class="ck">${c === cat ? "✓" : ""}</span><span class="t">${esc(c)}</span><span class="n">${n}</span></button>`).join("");
 
     // Source dropdown: counts reflect the current category
     const sc = {};
     for (const st of data.stories) {
-      if (cat !== "All" && st.category !== cat) continue;
+      if (deskOf(st) !== desk || (cat !== "All" && st.category !== cat)) continue;
       for (const a of st.articles) if (sel.has(a.source)) sc[a.source] = (sc[a.source] || 0) + 1;
     }
     const total = Object.values(sc).length ? view(null).filter((s) => cat === "All" || s.cat === cat).length : 0;
@@ -264,16 +276,16 @@
     if (cat === "All") {
       const [top, ...rest] = shown;
       if (top) html += card(top, true);
-      for (const c of data.categories) {
+      for (const c of deskCats()) {
         const g = rest.filter((s) => s.cat === c);
         if (g.length) html += `<h2 class="sect" style="--h:${hue(c)}">${esc(c)}<span class="n">${g.length}</span></h2>` + g.map((s) => card(s)).join("");
       }
     } else html = shown.map((s) => card(s)).join("");
     $("#feed").innerHTML = html;
-    $("#empty").textContent = "No stories match these filters. Try another category or source.";
+    $("#empty").textContent = `No ${DESK_NAME[desk]} stories match these filters. Try another category or source.`;
     $("#empty").hidden = shown.length > 0;
     const st = data.stats;
-    $("#foot").textContent = `Showing ${shown.length} ${shown.length === 1 ? "story" : "stories"} from ${sel.size} ${sel.size === 1 ? "source" : "sources"} · ${st.stories} stories considered · ${st.paywalled_dropped} paywalled items excluded · last ${data.window_hours}h`;
+    $("#foot").textContent = `Showing ${shown.length} ${DESK_NAME[desk]} ${shown.length === 1 ? "story" : "stories"} from ${sel.size} ${sel.size === 1 ? "source" : "sources"} · ${st.stories} stories considered · ${st.paywalled_dropped} paywalled items excluded · last ${data.window_hours}h`;
   }
 
   function renderPicker() {
@@ -281,7 +293,8 @@
     const hay = (s) => (s.name + " " + s.type + " " + s.id + " " + (s.site || "")).toLowerCase();
     const list = data.sources.filter((s) => words.every((w) => hay(s).includes(w)));
     const groups = {};
-    list.forEach((s) => (groups[s.type] = groups[s.type] || []).push(s));
+    const grp = (s) => (s.type === "Custom" ? "Custom" : (s.desk === "ai" ? "AI · " : "Tech · ") + s.type);
+    list.forEach((s) => (groups[grp(s)] = groups[grp(s)] || []).push(s));
     const order = Object.keys(groups).sort((a, b) => (a === "Custom") - (b === "Custom") || a.localeCompare(b));
     $("#srcList").innerHTML = list.length ? order.map((t) =>
       `<div class="srcgrp">${esc(t)}</div>` + groups[t].map((s) =>
@@ -367,11 +380,19 @@
     if (link && !(e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button)) { e.preventDefault(); openReader(link.closest(".card")); return; }
     const a = e.target.closest(".card a");   // headline (modified click) or an "Also" outlet: opens the page, counts as read
     if (a) { setRead(cards.get(a.closest(".card").dataset.id), true); return; }
-    const t = e.target.closest("[data-save],[data-unread],#openSaved,#clearRead,[data-pick-cat],[data-pick-src],#dropCat,#dropSrc,#manage,[data-close],#refresh,#retry,#openPicker,#selAll,#selNone,#selDefault,#saveSrc");
+    const t = e.target.closest(".desk,[data-save],[data-unread],#openSaved,#clearRead,[data-pick-cat],[data-pick-src],#dropCat,#dropSrc,#manage,[data-close],#refresh,#retry,#openPicker,#selAll,#selNone,#selDefault,#saveSrc");
     if (!t) return;
     if (t.id === "refresh" || t.id === "retry") { loadData(true); return; }
     if (!data) return;
-    if ("save" in t.dataset) {
+    if (t.classList.contains("desk")) {
+      if (t.dataset.desk === desk) return;
+      desk = t.dataset.desk;
+      try { localStorage.setItem(DESK, desk); } catch {}
+      cat = "All";
+      if (srcF && !view(srcF).length) srcF = null;   // keep a source filter only if it has stories on this desk
+      closePanels(); render(); scrollTo({ top: 0 });
+    }
+    else if ("save" in t.dataset) {
       const id = t.dataset.save, s = cards.get(id);
       if (saved.has(id)) saved.delete(id); else if (s) saved.set(id, toSaved(s));
       persist(); badge(); syncCard(t.closest(".card"));

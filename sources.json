@@ -1,5 +1,5 @@
 {
-  "_note": "Only sources that are free to read (no hard paywall, no metered paywall). ai_only=false means the feed is general and gets keyword-filtered. weight boosts primary/official sources.",
+  "_note": "Only sources that are free to read (no hard paywall, no metered paywall). ai_only=true: every item is AI news (AI desk). ai_only=false: a general feed; each item goes to the AI desk if it is clearly about AI, otherwise the Tech desk. topic_check=true: also drop items with no tech terms at all (general-news feeds). weight boosts primary/official sources.",
   "sources": [
     {"id": "openai",      "name": "OpenAI",               "feed": "https://openai.com/news/rss.xml",                                   "ai_only": true,  "weight": 1.3, "type": "Lab"},
     {"id": "deepmind",    "name": "Google DeepMind",      "feed": "https://deepmind.google/blog/rss.xml",                              "ai_only": true,  "weight": 1.3, "type": "Lab"},
@@ -7,27 +7,34 @@
     {"id": "nvidia",      "name": "NVIDIA Blog",          "feed": "https://blogs.nvidia.com/feed/",                                    "ai_only": false, "weight": 1.0, "type": "Lab"},
     {"id": "huggingface", "name": "Hugging Face",         "feed": "https://huggingface.co/blog/feed.xml",                              "ai_only": true,  "weight": 1.0, "type": "Lab"},
     {"id": "mitnews",     "name": "MIT News (AI)",        "feed": "https://news.mit.edu/topic/mitartificial-intelligence2-rss.xml",    "ai_only": true,  "weight": 1.0, "type": "Research"},
-    {"id": "techcrunch",  "name": "TechCrunch",           "feed": "https://techcrunch.com/category/artificial-intelligence/feed/",     "ai_only": true,  "weight": 1.1, "type": "News"},
-    {"id": "verge",       "name": "The Verge",            "feed": "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml", "ai_only": true,  "weight": 1.1, "type": "News"},
-    {"id": "ars",         "name": "Ars Technica",         "feed": "https://arstechnica.com/ai/feed/",                                  "ai_only": true,  "weight": 1.1, "type": "News"},
+    {"id": "techcrunch",  "name": "TechCrunch",           "feed": "https://techcrunch.com/feed/",                                       "ai_only": false, "weight": 1.1, "type": "News"},
+    {"id": "verge",       "name": "The Verge",            "feed": "https://www.theverge.com/rss/index.xml",                             "ai_only": false, "weight": 1.1, "type": "News"},
+    {"id": "ars",         "name": "Ars Technica",         "feed": "https://feeds.arstechnica.com/arstechnica/index",                    "ai_only": false, "weight": 1.1, "type": "News"},
     {"id": "venturebeat", "name": "VentureBeat",          "feed": "https://venturebeat.com/category/ai/feed/",                         "ai_only": true,  "weight": 1.0, "type": "News"},
     {"id": "decoder",     "name": "The Decoder",          "feed": "https://the-decoder.com/feed/",                                     "ai_only": true,  "weight": 1.0, "type": "News"},
     {"id": "marktechpost","name": "MarkTechPost",         "feed": "https://www.marktechpost.com/feed/",                                "ai_only": true,  "weight": 0.9, "type": "News"},
     {"id": "guardian",    "name": "The Guardian (AI)",    "feed": "https://www.theguardian.com/technology/artificialintelligenceai/rss","ai_only": true, "weight": 1.1, "type": "News"},
-    {"id": "bbc",         "name": "BBC Technology",       "feed": "https://feeds.bbci.co.uk/news/technology/rss.xml",                  "ai_only": false, "weight": 1.0, "type": "News"},
+    {"id": "bbc",         "name": "BBC Technology",       "feed": "https://feeds.bbci.co.uk/news/technology/rss.xml",                  "ai_only": false, "weight": 1.0, "type": "News", "topic_check": true},
     {"id": "hn",          "name": "Hacker News (AI)",     "feed": "https://hnrss.org/newest?q=AI+OR+LLM+OR+AGI+OR+OpenAI+OR+Anthropic&points=150", "ai_only": true, "weight": 0.8, "type": "Community"},
     {"id": "simonw",      "name": "Simon Willison",       "feed": "https://simonwillison.net/atom/everything/",                        "ai_only": false, "weight": 0.9, "type": "Newsletter"},
     {"id": "lastweek",    "name": "Last Week in AI",      "feed": "https://lastweekin.ai/feed",                                        "ai_only": true,  "weight": 0.9, "type": "Newsletter"},
     {"id": "tomshardware", "name": "Tom's Hardware", "feed": "https://www.tomshardware.com/feeds/all", "ai_only": false, "weight": 0.9, "type": "News", "site": "https://www.tomshardware.com"},
     {"id": "engadget", "name": "Engadget", "feed": "https://www.engadget.com/rss.xml", "ai_only": false, "weight": 0.9, "type": "News", "site": "https://www.engadget.com"},
-    {"id": "zdnet", "name": "ZDNET (AI)", "feed": "https://www.zdnet.com/topic/artificial-intelligence/rss.xml", "ai_only": true, "weight": 0.9, "type": "News", "site": "https://www.zdnet.com"},
-    {"id": "theregister", "name": "The Register (AI)", "feed": "https://www.theregister.com/software/ai_ml/headlines.atom", "ai_only": true, "weight": 1.0, "type": "News", "site": "https://www.theregister.com"},
+    {"id": "zdnet", "name": "ZDNET", "feed": "https://www.zdnet.com/news/rss.xml", "ai_only": false, "weight": 0.9, "type": "News", "site": "https://www.zdnet.com"},
+    {"id": "theregister", "name": "The Register", "feed": "https://www.theregister.com/headlines.atom", "ai_only": false, "weight": 1.0, "type": "News", "site": "https://www.theregister.com"},
     {"id": "techradar", "name": "TechRadar", "feed": "https://www.techradar.com/feeds/articletype/news", "ai_only": false, "weight": 0.8, "type": "News", "site": "https://www.techradar.com"},
-    {"id": "futurism", "name": "Futurism", "feed": "https://futurism.com/feed", "ai_only": false, "weight": 0.8, "type": "News", "site": "https://futurism.com"},
+    {"id": "futurism", "name": "Futurism", "feed": "https://futurism.com/feed", "ai_only": false, "weight": 0.8, "type": "News", "site": "https://futurism.com", "topic_check": true},
     {"id": "sciencedaily", "name": "ScienceDaily (AI)", "feed": "https://www.sciencedaily.com/rss/computers_math/artificial_intelligence.xml", "ai_only": true, "weight": 0.9, "type": "Research", "site": "https://www.sciencedaily.com"},
     {"id": "googleresearch", "name": "Google Research", "feed": "https://research.google/blog/rss/", "ai_only": true, "weight": 1.0, "type": "Research", "site": "https://research.google"},
     {"id": "bair", "name": "Berkeley AI Research", "feed": "https://bair.berkeley.edu/blog/feed.xml", "ai_only": true, "weight": 1.0, "type": "Research", "site": "https://bair.berkeley.edu"},
-    {"id": "awsml", "name": "AWS Machine Learning", "feed": "https://aws.amazon.com/blogs/machine-learning/feed/", "ai_only": true, "weight": 0.8, "type": "Lab", "site": "https://aws.amazon.com/blogs/machine-learning"}
+    {"id": "awsml", "name": "AWS Machine Learning", "feed": "https://aws.amazon.com/blogs/machine-learning/feed/", "ai_only": true, "weight": 0.8, "type": "Lab", "site": "https://aws.amazon.com/blogs/machine-learning"},
+    {"id": "tnw", "name": "The Next Web", "feed": "https://thenextweb.com/feed", "ai_only": false, "weight": 0.9, "type": "News", "site": "https://thenextweb.com"},
+    {"id": "9to5mac", "name": "9to5Mac", "feed": "https://9to5mac.com/feed/", "ai_only": false, "weight": 0.9, "type": "News", "site": "https://9to5mac.com"},
+    {"id": "9to5google", "name": "9to5Google", "feed": "https://9to5google.com/feed/", "ai_only": false, "weight": 0.9, "type": "News", "site": "https://9to5google.com"},
+    {"id": "androidauthority", "name": "Android Authority", "feed": "https://www.androidauthority.com/feed/", "ai_only": false, "weight": 0.9, "type": "News", "site": "https://www.androidauthority.com"},
+    {"id": "bleeping", "name": "BleepingComputer", "feed": "https://www.bleepingcomputer.com/feed/", "ai_only": false, "weight": 1.0, "type": "News", "site": "https://www.bleepingcomputer.com"},
+    {"id": "spacecom", "name": "Space.com", "feed": "https://www.space.com/feeds/all", "ai_only": false, "weight": 0.9, "type": "Science", "site": "https://www.space.com"},
+    {"id": "electrek", "name": "Electrek", "feed": "https://electrek.co/feed/", "ai_only": false, "weight": 0.9, "type": "News", "site": "https://electrek.co"}
   ],
   "blocked_domains": [
     "ft.com", "wsj.com", "bloomberg.com", "theinformation.com", "nytimes.com", "economist.com",
@@ -35,5 +42,6 @@
     "reuters.com", "semafor.com", "fortune.com", "forbes.com", "axios.com", "newyorker.com",
     "theatlantic.com", "statnews.com", "protocol.com"
   ],
-  "default_sources": ["openai", "deepmind", "googleai", "techcrunch", "verge", "ars", "venturebeat", "decoder", "guardian", "bbc", "hn"]
+  "default_sources": ["openai", "deepmind", "googleai", "techcrunch", "verge", "ars", "venturebeat", "decoder", "guardian", "bbc", "hn",
+                      "engadget", "theregister", "tnw", "9to5mac", "9to5google", "androidauthority", "bleeping", "spacecom", "electrek"]
 }
