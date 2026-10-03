@@ -14,5 +14,6 @@ Still ask first before anything destructive or irreversible: force-pushing, rewr
 - Before pushing, run:
   - `python3 tests/test_add_source.py`
   - `python3 tests/test_categories.py`
+  - `python3 tests/test_paywall.py`
   - Offline pipeline: `python3 tests/make_fixtures.py && python3 scripts/fetch_news.py --fixtures tests/fixtures`, then `cp web/* site/ && python3 -m http.server -d site`.
 - For browser checks, use Playwright with Chromium at `/opt/pw-browsers/chromium`; don't run `playwright install`.

@@ -310,14 +310,26 @@ def parse_feed(xml_bytes):
 
 
 # ---- paywall check ----------------------------------------------------------
-PAYWALL_MARKERS = re.compile(
-    r"\"isAccessibleForFree\"\s*:\s*(false|\"false\")|"
-    r"subscribe to (continue|read)|subscribers? only|subscriber-only|"
-    r"to continue reading|sign in to read|for subscribers|premium (content|article)|"
-    r"\bmeteredContent|data-paywall|class=\"[^\"]*\bpaywall\b", re.I)
+# Signals that an article page is paywalled.  Phrases that also appear in ordinary menus and article text
+# ("Subscribers only" links, "Premium Content" nav labels, "free for subscribers") are deliberately left out:
+# they flagged every article on free sites like Ars Technica, TechRadar and Tom's Hardware.
+# STRONG: the publisher's own structured "not free" flag, or an explicit "subscribe to keep reading" wall.
+PAYWALL_STRONG = re.compile(
+    r"\"isAccessibleForFree\"\s*:\s*(false|\"false\")|\bmeteredContent\b|"
+    r"subscribe to (continue|keep) reading|subscribe to read (this|the full|more)|to continue reading,? (please )?(subscribe|sign in|log in)|"
+    r"sign in to read (this|the full)", re.I)
+# MARKUP: paywall hooks in the HTML.  Reliable on most sites, but some free sites ship them in their templates,
+# so sources marked "free_site": true in sources.json skip this check (they still get PAYWALL_STRONG).
+PAYWALL_MARKUP = re.compile(r"\bdata-paywall\b|class=\"[^\"]*\bpaywall\b", re.I)
 
 
-def check_article(url, blocked, fixtures):
+def paywall_marker(page, free_site=False):
+    """The text that marks this page as paywalled, or "" if it looks free to read."""
+    m = PAYWALL_STRONG.search(page) or (None if free_site else PAYWALL_MARKUP.search(page))
+    return m.group(0) if m else ""
+
+
+def check_article(url, blocked, fixtures, free_site=False):
     """Return (ok, meta_description, og_image, why). ok False => paywalled/unreadable; why says what caught it."""
     if is_blocked(url, blocked):
         return False, "", "", "blocked domain"
@@ -331,9 +343,9 @@ def check_article(url, blocked, fixtures):
             return False, "", "", f"HTTP {code}"
         return True, "", "", ""   # source is vetted-free; can't verify (bot block / timeout) -> keep
     page = decode(body, cs)
-    pw = PAYWALL_MARKERS.search(page)
+    pw = paywall_marker(page, free_site)
     if pw:
-        return False, "", "", "marker " + repr(pw.group(0)[:40])
+        return False, "", "", "marker " + repr(pw[:40])
     m = re.search(r'<meta[^>]+(?:property="og:description"|name="description")[^>]+content="([^"]*)"', page, re.I)
     im = re.search(r'<meta[^>]+(?:property="og:image"|name="twitter:image")[^>]+content="([^"]*)"', page, re.I)
     return True, html.unescape(m.group(1)) if m else "", web_url(urljoin(url, html.unescape(im.group(1)))) if im else "", ""
@@ -444,7 +456,7 @@ def build(args):
 
     # paywall check, concurrent
     def chk(a):
-        ok, desc, img, why = check_article(a["url"], blocked, fixtures)
+        ok, desc, img, why = check_article(a["url"], blocked, fixtures, bool(sources[a["source"]].get("free_site")))
         a["image"] = a["image"] or img
         a["_why"] = why
         return a, ok, desc
