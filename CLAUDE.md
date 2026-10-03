@@ -18,5 +18,6 @@ When asked to plan only (or to "go into plan mode"), do not implement anything, 
   - `python3 tests/test_add_source.py`
   - `python3 tests/test_categories.py`
   - `python3 tests/test_paywall.py`
+  - `python3 tests/test_text.py`
   - Offline pipeline: `python3 tests/make_fixtures.py && python3 scripts/fetch_news.py --fixtures tests/fixtures`, then `cp web/* site/ && python3 -m http.server -d site`.
 - For browser checks, use Playwright with Chromium at `/opt/pw-browsers/chromium`; don't run `playwright install`.

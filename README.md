@@ -22,7 +22,7 @@ python3 scripts/fetch_news.py        # needs open internet
 cp web/* site/ && python3 scripts/build_email.py
 python3 -m http.server -d site       # http://localhost:8000
 ```
-Tests: `python3 tests/test_add_source.py` (offline, mock web server), `python3 tests/test_categories.py`, `python3 tests/test_paywall.py`.
+Tests: `python3 tests/test_add_source.py` (offline, mock web server), `python3 tests/test_categories.py`, `python3 tests/test_paywall.py`, `python3 tests/test_text.py`.
 Offline pipeline test with synthetic data: `python3 tests/make_fixtures.py && python3 scripts/fetch_news.py --fixtures tests/fixtures`.
 
 Add/remove outlets by editing `sources.json` (only add sources that are fully free).

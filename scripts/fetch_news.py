@@ -141,6 +141,10 @@ def strip_html(s):
     s = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", s or "", flags=re.S | re.I)
     s = re.sub(r"<[^>]+>", " ", s)
     s = html.unescape(s)
+    # some feeds escape their HTML twice ("&lt;p&gt;A ..."): the first unescape leaves real tags behind,
+    # so strip anything tag-shaped again and decode once more (e.g. "&amp;amp;")
+    s = re.sub(r"</?[a-zA-Z][^<>]*>|<!--.*?-->", " ", s, flags=re.S)
+    s = html.unescape(s)
     return re.sub(r"\s+", " ", s).strip()
 
 
