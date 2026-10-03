@@ -8,6 +8,9 @@ When a change is finished and tested, do the whole delivery without asking:
 
 Still ask first before anything destructive or irreversible: force-pushing, rewriting history, deleting branches or data, or merging when checks are failing.
 
+## Plan-only requests
+When asked to plan only (or to "go into plan mode"), do not implement anything, even after the plan is approved. Write the plan as a self-contained brief in `docs/plans/<name>.md` that another model can execute, then stop. The brief should give context, decisions, files to change, constraints, verification steps and delivery steps. Only build it when explicitly asked to, in words like "implement it" or "build it".
+
 ## Project notes
 - Static GitHub Pages dashboard. `scripts/fetch_news.py` writes `site/data/news.json`; the front end is plain HTML/CSS/JS in `web/` with no framework and no build step.
 - User preferences live in `localStorage` under `dailyAInews.<name>.v1` keys, with every read and write wrapped in try/catch.
