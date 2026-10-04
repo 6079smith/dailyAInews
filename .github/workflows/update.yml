@@ -25,8 +25,7 @@ jobs:
         run: |
           cp web/* site/
           sed -i "s|style.css|style.css?v=${GITHUB_SHA::8}|; s|app.js|app.js?v=${GITHUB_SHA::8}|" site/index.html
-      - run: python3 scripts/build_email.py
-      - name: Send daily email (06:xx UTC run or manual run; only if SMTP secrets are set)
+      - name: Build email preview; send it on a manual run (only if SMTP secrets are set)
         env:
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
           SMTP_PORT: ${{ secrets.SMTP_PORT }}
@@ -34,10 +33,10 @@ jobs:
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
         run: |
-          if [ -n "$SMTP_HOST" ] && { [ "$(date -u +%H)" = "06" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; }; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             python3 scripts/build_email.py
           else
-            echo "email skipped"
+            env -u SMTP_HOST python3 scripts/build_email.py
           fi
       - uses: actions/upload-pages-artifact@v3
         with: { path: site }
