@@ -1,7 +1,7 @@
 name: Daily email
 on:
   schedule:
-    - cron: "7 6 * * *"      # 06:07 UTC every day
+    - cron: "37 3 * * *"     # 03:37 UTC every day
   workflow_dispatch:
 permissions:
   contents: read
