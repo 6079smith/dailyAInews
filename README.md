@@ -14,7 +14,7 @@ Phone-friendly dashboard (+ optional email digest) of the latest tech news, with
 ## Setup
 1. Repo **Settings → Pages → Source: GitHub Actions** (a private repo needs a plan that supports Pages).
 2. Run the *Update AI news* workflow once (Actions tab → Run workflow). Your dashboard is at `https://<user>.github.io/<repo>/`.
-3. *(Optional email)* add repo secrets `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_TO`. The *Daily email* workflow sends it daily at 03:37 UTC. Tune `config/email.json` (sources, story count, dashboard link).
+3. *(Optional email)* add repo secrets `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_TO`. The *Daily email* workflow sends it daily at 03:37 UTC. Tune `config/email.json` (sources, story count, web app link at the top).
 
 ## Local
 ```

@@ -46,7 +46,7 @@ parts = [f'''<!doctype html><html><head><meta charset="utf-8"><meta name="viewpo
 <body style="margin:0;padding:0;background:#f6f7f9;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#14171c">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:12px">
 <table role="presentation" width="100%" style="max-width:560px" cellpadding="0" cellspacing="0">
-<tr><td style="padding:8px 4px 14px"><div style="font-size:22px;font-weight:700">{e(cfg["subject"])}</div><div style="font-size:13px;color:#5d6674">{e(date)} · free-to-read sources only</div></td></tr>''']
+<tr><td style="padding:8px 4px 14px"><div style="font-size:22px;font-weight:700">{e(cfg["subject"])}</div><div style="font-size:13px;color:#5d6674">{e(date)} · free-to-read sources only</div>{f'<div style="margin-top:8px;font-size:14px"><a href="{e(cfg["site_url"])}" style="color:#3b5bdb;font-weight:600">Open the web app &rarr;</a></div>' if cfg.get("site_url") else ""}</td></tr>''']
 for desk, label in DESKS.items():
     if picked[desk]:
         parts.append(f'<tr><td style="padding:18px 4px 2px;font-size:19px;font-weight:800;color:#14171c;border-bottom:2px solid #3b5bdb">{e(label)}</td></tr>')
@@ -63,8 +63,6 @@ for desk, label in DESKS.items():
 <div style="font-size:14px;line-height:1.45;color:#5d6674">{e(lead["snippet"])}</div>
 {f'<div style="margin-top:8px;font-size:12.5px;color:#5d6674">Also: {also}</div>' if also else ""}
 </td></tr></table></td></tr>''')
-if cfg.get("site_url"):
-    parts.append(f'<tr><td align="center" style="padding:10px;font-size:13px"><a href="{e(cfg["site_url"])}" style="color:#3b5bdb">Open the full dashboard</a></td></tr>')
 parts.append("</table></td></tr></table></body></html>")
 html = "".join(parts)
 (ROOT / "site" / "email.html").write_text(html)
@@ -78,7 +76,7 @@ if os.environ.get("SMTP_HOST"):
     msg["Subject"] = f'{cfg["subject"]} – {date}'
     msg["From"] = os.environ.get("EMAIL_FROM", os.environ["SMTP_USER"])
     msg["To"] = os.environ["EMAIL_TO"]
-    msg.set_content("\n\n".join(f'[{DESKS[d]} · {c}] {a[0]["title"]}\n{a[0]["url"]}' for d, v in picked.items() for c, a in v))
+    msg.set_content(("Open the web app: " + cfg["site_url"] + "\n\n" if cfg.get("site_url") else "") + "\n\n".join(f'[{DESKS[d]} · {c}] {a[0]["title"]}\n{a[0]["url"]}' for d, v in picked.items() for c, a in v))
     msg.add_alternative(html, subtype="html")
     with smtplib.SMTP(os.environ["SMTP_HOST"], int(os.environ.get("SMTP_PORT", 587))) as s:
         s.starttls(context=ssl.create_default_context())
