@@ -20,10 +20,10 @@
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding-bottom:env(safe-area-inset-bottom)}
-body::before,body::after{content:"";position:fixed;width:520px;height:520px;border-radius:50%;filter:blur(90px);opacity:var(--blobo);z-index:-1;pointer-events:none;animation:drift 18s ease-in-out infinite alternate;will-change:transform}
-body::before{background:var(--blob1);top:-160px;left:-140px}
-body::after{background:var(--blob2);bottom:-180px;right:-160px;animation-delay:-9s}
-@keyframes drift{to{transform:translate(60px,40px) scale(1.15)}}
+/* static glow blobs: radial gradients are far cheaper than blur() filters, and nothing animates forever */
+body::before,body::after{content:"";position:fixed;width:900px;height:900px;border-radius:50%;opacity:var(--blobo);z-index:-1;pointer-events:none}
+body::before{background:radial-gradient(closest-side,var(--blob1),transparent);top:-450px;left:-400px}
+body::after{background:radial-gradient(closest-side,var(--blob2),transparent);bottom:-500px;right:-450px}
 [hidden]{display:none!important}
 
 /* header */
@@ -32,7 +32,7 @@ body::after{background:var(--blob2);bottom:-180px;right:-160px;animation-delay:-
 h1{margin:0;font-size:22px;font-weight:800;letter-spacing:-.02em;background:linear-gradient(90deg,var(--t1),var(--t2) 60%,var(--t3));-webkit-background-clip:text;background-clip:text;color:transparent}
 .sub{font-size:12.5px;color:var(--mut);margin:3px 0 10px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
 .free{color:var(--ok);font-weight:600}
-.dot{width:8px;height:8px;border-radius:50%;background:var(--ok);flex:none;animation:pulse 2s infinite}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ok);flex:none;animation:pulse 2s 3}
 @keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--ok) 65%,transparent)}70%{box-shadow:0 0 0 9px transparent}100%{box-shadow:0 0 0 0 transparent}}
 .actions{display:flex;gap:4px;align-items:center;flex:none}
 .btn{font:inherit;font-size:14px;font-weight:600;border:1px solid var(--bd);background:var(--glass1);color:var(--ink);border-radius:999px;padding:8px 14px;min-height:40px;cursor:pointer;transition:transform .15s,background .15s}
@@ -115,7 +115,7 @@ main{padding:14px 12px 4px;max-width:960px;margin:0 auto;display:grid;grid-templ
 .who{min-width:0;display:flex;flex-direction:column;line-height:1.2}
 .sn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink);font-weight:600;font-size:12.5px}
 .age{font-size:11.5px;color:var(--mut);white-space:nowrap}
-.new{position:absolute;top:12px;right:52px;font-size:10px;font-weight:800;letter-spacing:.08em;color:#04210f;background:#34e39a;border-radius:999px;padding:2px 7px;animation:blink 1.8s infinite}
+.new{position:absolute;top:12px;right:52px;font-size:10px;font-weight:800;letter-spacing:.08em;color:#04210f;background:#34e39a;border-radius:999px;padding:2px 7px;animation:blink 1.8s 3}
 @keyframes blink{50%{opacity:.55}}
 .age .new{position:static;display:inline-block;margin-left:6px;padding:0 6px;font-size:9.5px;line-height:1.5;vertical-align:1px}   /* on the time line, so it never covers the source name */
 .card>.bm{position:absolute;top:6px;right:6px;z-index:2;width:40px;height:40px;display:grid;place-items:center;padding:0;border:0;border-radius:50%;background:transparent;color:var(--mut);cursor:pointer}
