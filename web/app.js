@@ -336,7 +336,7 @@
     lastFocus = null;
   }
 
-  // pointer glow + gentle tilt on desktop (not touch, not reduced-motion)
+  // pointer glow on desktop (not touch, not reduced-motion)
   const fine = matchMedia("(hover:hover) and (pointer:fine)").matches && !matchMedia("(prefers-reduced-motion:reduce)").matches;
   if (fine) {
     let raf = 0;
@@ -347,12 +347,7 @@
         raf = 0;
         const r = c.getBoundingClientRect(), x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
         c.style.setProperty("--mx", x * 100 + "%"); c.style.setProperty("--my", y * 100 + "%");
-        c.style.setProperty("--ry", (x - .5) * 5 + "deg"); c.style.setProperty("--rx", (.5 - y) * 4 + "deg");
       });
-    });
-    $("#feed").addEventListener("pointerout", (e) => {
-      const c = e.target.closest(".card");
-      if (c && !c.contains(e.relatedTarget)) { c.style.removeProperty("--rx"); c.style.removeProperty("--ry"); }
     });
   }
 
