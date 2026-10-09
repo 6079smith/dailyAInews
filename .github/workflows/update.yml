@@ -1,8 +1,7 @@
 name: Update AI news
 on:
-  # Hourly rebuild paused. To resume, uncomment the two lines below.
-  # schedule:
-  #   - cron: "17 * * * *"     # refresh dashboard every hour
+  schedule:
+    - cron: "17 * * * *"     # refresh dashboard every hour
   workflow_dispatch:
   push:
     branches: [main]
