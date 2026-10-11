@@ -34,7 +34,8 @@
     {"id": "androidauthority", "name": "Android Authority", "feed": "https://www.androidauthority.com/feed/", "ai_only": false, "weight": 0.9, "type": "News", "site": "https://www.androidauthority.com"},
     {"id": "bleeping", "name": "BleepingComputer", "feed": "https://www.bleepingcomputer.com/feed/", "ai_only": false, "weight": 1.0, "type": "News", "site": "https://www.bleepingcomputer.com"},
     {"id": "spacecom", "name": "Space.com", "feed": "https://www.space.com/feeds/all", "ai_only": false, "weight": 0.9, "type": "Science", "site": "https://www.space.com"},
-    {"id": "electrek", "name": "Electrek", "feed": "https://electrek.co/feed/", "ai_only": false, "weight": 0.9, "type": "News", "site": "https://electrek.co"}
+    {"id": "electrek", "name": "Electrek", "feed": "https://electrek.co/feed/", "ai_only": false, "weight": 0.9, "type": "News", "site": "https://electrek.co"},
+    {"id": "madrobot", "name": "MadRobot", "feed": "https://madrobot.blog/feed.xml", "ai_only": true, "weight": 0.9, "type": "Custom", "custom": true, "site": "https://madrobot.blog"}
   ],
   "blocked_domains": [
     "ft.com", "wsj.com", "bloomberg.com", "theinformation.com", "nytimes.com", "economist.com",
@@ -43,5 +44,5 @@
     "theatlantic.com", "statnews.com", "protocol.com"
   ],
   "default_sources": ["openai", "deepmind", "googleai", "techcrunch", "verge", "ars", "venturebeat", "decoder", "guardian", "bbc", "hn",
-                      "engadget", "theregister", "tnw", "9to5mac", "9to5google", "androidauthority", "bleeping", "spacecom", "electrek"]
+                      "engadget", "theregister", "tnw", "9to5mac", "9to5google", "androidauthority", "bleeping", "spacecom", "electrek", "madrobot"]
 }
